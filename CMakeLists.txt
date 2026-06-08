@@ -10,18 +10,18 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Widgets)
 
-add_executable(fraktalized
+add_executable(${PROJECT_NAME}
     src/main.cpp
 )
 
-qt_add_qml_module(fraktalized
-    URI fraktalized
+qt_add_qml_module(${PROJECT_NAME}
+    URI fraktalizedModule
     VERSION 1.0
     QML_FILES
         qml/main.qml
 )
 
-target_link_libraries(fraktalized PRIVATE
+target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Quick
