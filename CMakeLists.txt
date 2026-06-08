@@ -8,10 +8,17 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Widgets OpenGL)
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
+    src/fractalengine.h
+    src/fractalengine.cpp
+)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 qt_add_qml_module(${PROJECT_NAME}
@@ -19,6 +26,9 @@ qt_add_qml_module(${PROJECT_NAME}
     VERSION 1.0
     QML_FILES
         qml/main.qml
+    SOURCES
+        src/fractalengine.h
+        src/fractalengine.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

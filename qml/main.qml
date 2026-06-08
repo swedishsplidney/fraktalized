@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import fraktalizedModule
 
 Window {
     visible: true
@@ -7,6 +8,11 @@ Window {
     height: 720
     title: "fraktalized"
     color: "#0d0e15"
+
+    // openGL viewport
+    FractalEngine {
+        anchors.fill: parent
+    }
 
     // floating panel
     Rectangle {
