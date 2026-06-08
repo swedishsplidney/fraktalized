@@ -1,25 +1,88 @@
 #include "fractalengine.h"
 #include <QQuickWindow>
+#include <QDebug>
 
 FractalRenderer::FractalRenderer() {
     // constructor
 }
 
+FractalRenderer::~FractalRenderer() {
+    // cleanup gpu resources
+    m_vao.destroy();
+    m_vbo.destroy();
+    delete m_program;
+}
+
+void FractalRenderer::initShaders() {
+    m_program = new QOpenGLShaderProgram();
+
+    // compile shaders directly
+    if (!m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/fractal.vert")) {
+        qWarning() << "fragment shader error: " << m_program->log();
+    }
+
+    if (!m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/fractal.frag")) {
+        qWarning() << "fragment shader error: " << m_program->log();
+    }
+
+    // link them together for the GPU
+    if (!m_program->link()) {
+        qWarning() << "shader program linking error: " << m_program->log();
+    }
+}
+
+void FractalRenderer::initGeometry() {
+    // corner coords for two triangles that cover a modern clip space screen
+    GLfloat vertices[] = {
+        -1.0f, -1.0f, 0.0f,
+        1.0f, -1.0f, 0.0f,
+        -1.0f, 1.0f, 0.0f,
+
+        -1.0f, 1.0f, 0.0f,
+        1.0f, -1.0f, 0.0f,
+        1.0f, 1.0f, 0.0f,
+    };
+
+    m_vao.create();
+    m_vao.bind();
+
+    m_vbo.create();
+    m_vbo.bind();
+    m_vbo.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    m_vbo.allocate(vertices, sizeof(vertices));
+
+    // tell gpu that attribute 0 means xyz coords
+    m_program->enableAttributeArray(0);
+    m_program->setAttributeBuffer(0, GL_FLOAT, 0, 3, 3 * sizeof(GLfloat));
+
+    m_vao.release();
+    m_vbo.release();
+}
+
 void FractalRenderer::paint() {
-    // raw opengl code for fractals
     if (!m_initialized) {
         initializeOpenGLFunctions();
+        initShaders();
+        initGeometry();
         m_initialized = true;
     }
 
-    // clear viewport
     glViewport(0, 0, m_width, m_height);
-    glClearColor(0.2f, 0.0f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // activate shader program
+    m_program->bind();
+    m_vao.bind();
+
+    glDrawArrays(GL_TRIANGLES, 0, 6); // draw 6 vertices
+
+    m_vao.release();
+    m_program->release();
 }
 
+// wrapper functions
+
 FractalEngine::FractalEngine() {
-    // tell qt to trigger sync slot every frame
     connect(this, &QQuickItem::windowChanged, this, &FractalEngine::handleWindowChanged);
 }
 
@@ -33,7 +96,6 @@ void FractalEngine::handleWindowChanged(QQuickWindow *window) {
 void FractalEngine::sync() {
     if (!m_renderer) {
         m_renderer = new FractalRenderer();
-        // force new window to connect paint function to frame cycle
         connect(window(), &QQuickWindow::beforeRenderPassRecording, m_renderer, &FractalRenderer::paint, Qt::DirectConnection);
     }
     m_renderer->setWindowSize(window()->width() * window()->devicePixelRatio(),
@@ -48,5 +110,5 @@ void FractalEngine::cleanup() {
 }
 
 void FractalEngine::releaseResources() {
-    // safe destruction
+    // safe destruction placeholder
 }
