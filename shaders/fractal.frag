@@ -14,7 +14,7 @@ void main() {
     vec2 z = vec2(0.0, 0.0);
 
     float iter = 0.0;
-    float max_iter = 200.0;
+    float max_iter = 100.0;
 
     // fractal loop Z = Z^2 + C
     for (float i = 0.0; i < max_iter; i++) {
