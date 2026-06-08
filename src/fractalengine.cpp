@@ -19,8 +19,8 @@ void FractalFBORenderer::init() {
     bool vLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/fractal.vert");
     bool fLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/fractal.frag");
 
-    std::cout << "[FBO INIT] Shaders -> Vertex: " << (vLoaded ? "OK" : "FAIL")
-              << " | Fragment: " << (fLoaded ? "OK" : "FAIL") << std::endl;
+    std::cout << "[fbo init] shaders -> vertex: " << (vLoaded ? "ok" : "fail")
+              << " | fragment: " << (fLoaded ? "ok" : "fail") << std::endl;
 
     m_program->bindAttributeLocation("aPos", 0);
     m_program->link();
