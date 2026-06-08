@@ -1,0 +1,10 @@
+# clion internal files
+.idea/
+cmake-build-*/
+
+# other artifacts
+build/
+dist/
+*.exe
+*.out
+*.app
