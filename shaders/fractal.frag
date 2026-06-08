@@ -10,11 +10,11 @@ void main() {
     st.x *= 1.770;
 
     // map coords to complex plane complex boundaries, shifting slightly to the left to center
-    vec2 c = st * 1.5 - vec2(0.5, 0.0);
+    vec2 c = st * 0.4 - vec2(1.1, 0.0);
     vec2 z = vec2(0.0, 0.0);
 
     float iter = 0.0;
-    float max_iter = 100.0;
+    float max_iter = 200.0;
 
     // fractal loop Z = Z^2 + C
     for (float i = 0.0; i < max_iter; i++) {
@@ -40,10 +40,10 @@ void main() {
         float t = iter / max_iter;
 
         // procedural color
-        vec3 color = vec3(t * 0.4 + 0.1, 0.0, t * 0.8 +0.2);
+        vec3 color = vec3(t * 0.3, 0.0, t * 0.65);
 
         // exponentially boost brightness at edges
-        color += vec3(pow(t, 4.0) * 0.5);
+        color += vec3(pow(t, 5.0) * 0.6);
 
         FragColor = vec4(color, 1.0); // opaque
     }
