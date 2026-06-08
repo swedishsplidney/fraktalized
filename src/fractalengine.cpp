@@ -1,133 +1,86 @@
 #include "fractalengine.h"
-#include <QQuickWindow>
-#include <QDebug>
+#include <iostream>
+#include <QOpenGLFramebufferObject>
 
-FractalRenderer::FractalRenderer() {
-    // constructor
+FractalFBORenderer::FractalFBORenderer() {
+    // constructor runs safely on the dedicated graphics render thread context loop
 }
 
-FractalRenderer::~FractalRenderer() {
-    // cleanup gpu resources
-    m_vao.destroy();
-    m_vbo.destroy();
+FractalFBORenderer::~FractalFBORenderer() {
     delete m_program;
 }
 
-void FractalRenderer::initShaders() {
+void FractalFBORenderer::init() {
+    if (m_initialized) return;
+
+    initializeOpenGLFunctions();
     m_program = new QOpenGLShaderProgram();
 
-    // compile shaders directly
-    if (!m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/fractal.vert")) {
-        qWarning() << "fragment shader error: " << m_program->log();
-    }
+    bool vLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/fractal.vert");
+    bool fLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/fractal.frag");
 
-    if (!m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/fractal.frag")) {
-        qWarning() << "fragment shader error: " << m_program->log();
-    }
-
-    // link them together for the GPU
-    if (!m_program->link()) {
-        qWarning() << "shader program linking error: " << m_program->log();
-    }
-}
-
-void FractalRenderer::initGeometry() {
-    // corner coords for two triangles that cover a modern clip space screen
-    GLfloat vertices[] = {
-        -1.0f, -1.0f, 0.0f,
-        1.0f, -1.0f, 0.0f,
-        -1.0f, 1.0f, 0.0f,
-
-        -1.0f, 1.0f, 0.0f,
-        1.0f, -1.0f, 0.0f,
-        1.0f, 1.0f, 0.0f,
-    };
-
-    m_vao.create();
-    m_vao.bind();
-
-    m_vbo.create();
-    m_vbo.bind();
-    m_vbo.setUsagePattern(QOpenGLBuffer::StaticDraw);
-    m_vbo.allocate(vertices, sizeof(vertices));
+    std::cout << "[FBO INIT] Shaders -> Vertex: " << (vLoaded ? "OK" : "FAIL")
+              << " | Fragment: " << (fLoaded ? "OK" : "FAIL") << std::endl;
 
     m_program->bindAttributeLocation("aPos", 0);
+    m_program->link();
 
-    // tell gpu that attribute 0 means xyz coords
-    m_program->enableAttributeArray(0);
-    m_program->setAttributeBuffer(0, GL_FLOAT, 0, 3, 3 * sizeof(GLfloat));
-
-    m_vao.release();
-    m_vbo.release();
+    m_initialized = true;
 }
 
-void FractalRenderer::paint() {
-    if (!m_initialized) {
-        initializeOpenGLFunctions();
-        initShaders();
-        initGeometry();
-        m_initialized = true;
-    }
+QOpenGLFramebufferObject *FractalFBORenderer::createFramebufferObject(const QSize &size) {
+    // let qt allocate a color-managed texture surface box automatically
+    QOpenGLFramebufferObjectFormat format;
+    format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+    return new QOpenGLFramebufferObject(size, format);
+}
 
-    QQuickWindow *window = qobject_cast<QQuickWindow*>(sender());
+void FractalFBORenderer::render() {
+    if (!m_initialized) init();
 
-    GLint viewport[4];
-    glGetIntegerv(GL_VIEWPORT, viewport);
-    glViewport(0, 0, viewport[2], viewport[3]);
+    // get the texture surface constraints directly from the active fbo container
+    QOpenGLFramebufferObject *fbo = framebufferObject();
+    int width = fbo->width();
+    int height = fbo->height();
 
-    if (window) window->beginExternalCommands();
-
-    glClearColor(0.1f, 0.0f, 0.2f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // isolate state adjustments
+    glViewport(0, 0, width, height);
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_BLEND);
 
-    // activate shader program
     m_program->bind();
-    m_vao.bind();
+    m_program->setUniformValue("u_resolution", QVector2D(width, height));
 
-    glDrawArrays(GL_TRIANGLES, 0, 6); // draw 6 vertices
+    // local coordinate structure passed down to the pipeline unit
+    GLfloat rawVertices[] = {
+        -1.0f, -1.0f, 0.0f,
+         1.0f, -1.0f, 0.0f,
+        -1.0f,  1.0f, 0.0f,
 
-    m_vao.release();
+        -1.0f,  1.0f, 0.0f,
+         1.0f, -1.0f, 0.0f,
+         1.0f,  1.0f, 0.0f,
+    };
+
+    m_program->enableAttributeArray(0);
+    m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);
+
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    m_program->disableAttributeArray(0);
     m_program->release();
 
-    if (window) window->endExternalCommands();
+    // force the fbo loop layer to schedule a visual frame state update sequence
+    update();
 }
 
-// wrapper functions
+// fractalengine implementation
 
 FractalEngine::FractalEngine() {
-    // notify qt that this item renders raw content
-    setFlag(ItemHasContents, true);
-
-    connect(this, &QQuickItem::windowChanged, this, &FractalEngine::handleWindowChanged);
+    // class construction properties managed implicitly by the framework
 }
 
-void FractalEngine::handleWindowChanged(QQuickWindow *window) {
-    if (window) {
-        connect(window, &QQuickWindow::beforeSynchronizing, this, &FractalEngine::sync, Qt::DirectConnection);
-        connect(window, &QQuickWindow::sceneGraphInvalidated, this, &FractalEngine::cleanup, Qt::DirectConnection);
-    }
-}
-
-void FractalEngine::sync() {
-    if (!m_renderer) {
-        m_renderer = new FractalRenderer();
-
-        window()->setColor(QColor(Qt::transparent));
-
-        connect(window(), &QQuickWindow::afterRendering, m_renderer, &FractalRenderer::paint, Qt::DirectConnection);
-    }
-    m_renderer->setWindowSize(window()->width() * window()->devicePixelRatio(),
-        window()->height() * window()->devicePixelRatio());
-}
-
-void FractalEngine::cleanup() {
-    if (m_renderer) {
-        delete m_renderer;
-        m_renderer = nullptr;
-    }
-}
-
-void FractalEngine::releaseResources() {
-    // safe destruction placeholder
+QQuickFramebufferObject::Renderer *FractalEngine::createRenderer() const {
+    return new FractalFBORenderer();
 }

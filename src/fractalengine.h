@@ -1,48 +1,34 @@
-#pragma once
+#ifndef FRACTALENGINE_H
+#define FRACTALENGINE_H
 
-#include <QQuickItem>
-#include <QOpenGLFunctions>
+#include <QQuickFramebufferObject>
+#include <QOpenGLFunctions_3_3_Core>
 #include <QOpenGLShaderProgram>
-#include <QOpenGLBuffer>
-#include <QOpenGLVertexArrayObject>
-#include <QQuickWindow>
 
-class FractalRenderer : public QObject, protected QOpenGLFunctions {
-    Q_OBJECT
+// handles the actual GPU rendering work inside an isolated fbo texture canvas
+class FractalFBORenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_3_3_Core {
 public:
-    FractalRenderer();
-    ~FractalRenderer();
-    void paint();
-    void setWindowSize(int w, int h) {m_width = w; m_height = h; }
+    FractalFBORenderer();
+    ~FractalFBORenderer() override;
+
+    // fbo rendering hooks
+    void render() override;
+    QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) override;
 
 private:
-    int m_width = 1280;
-    int m_height = 720;
     bool m_initialized = false;
-
     QOpenGLShaderProgram *m_program = nullptr;
-    QOpenGLVertexArrayObject m_vao;
-    QOpenGLBuffer m_vbo;
-
-    void initGeometry();
-    void initShaders();
+    void init();
 };
 
-class FractalEngine : public QQuickItem {
+class FractalEngine : public QQuickFramebufferObject {
     Q_OBJECT
     QML_ELEMENT
 
 public:
     FractalEngine();
 
-protected:
-    void releaseResources() override;
-
-private slots:
-    void handleWindowChanged(QQuickWindow *window);
-    void sync();
-    void cleanup();
-
-private:
-    FractalRenderer *m_renderer = nullptr;
+    Renderer *createRenderer() const override;
 };
+
+#endif

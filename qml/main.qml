@@ -3,15 +3,15 @@ import QtQuick.Controls
 import fraktalizedModule
 
 Window {
+    id: rootWindow
     visible: true
     width: 1280
     height: 720
     title: "fraktalized"
 
-    color: "#0d0e15"
-
     // openGL viewport
     FractalEngine {
+        id: engine
         anchors.fill: parent
     }
 
@@ -22,9 +22,10 @@ Window {
         height: parent.height - 40
         x: 20
         y: 20
-        color: "#25000000"
+        color: "#d00d0e15"
         border.color: "#35ffffff"
         radius: 12
+        z: 1
 
         Column {
             anchors.fill: parent
@@ -45,7 +46,6 @@ Window {
                 font.pixelSize: 13
             }
 
-            // test component
             Slider {
                 id: maxIterations
                 width: parent.width

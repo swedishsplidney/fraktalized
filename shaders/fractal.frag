@@ -2,9 +2,11 @@
 
 out vec4 FragColor;
 
+uniform vec2 u_resolution;
+
 void main() {
     // normalize pixel coords
-    vec2 st = (gl_FragCoord.xy / vec2(1280.0, 720.0)) * 2.0 - 1.0;
+    vec2 st = (gl_FragCoord.xy / u_resolution) * 2.0 - 1.0;
     st.x *= 1.770;
 
     // map coords to complex plane complex boundaries, shifting slightly to the left to center

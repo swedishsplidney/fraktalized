@@ -29,6 +29,9 @@ qt_add_qml_module(${PROJECT_NAME}
     SOURCES
         src/fractalengine.h
         src/fractalengine.cpp
+    RESOURCES
+        shaders/fractal.vert
+        shaders/fractal.frag
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
