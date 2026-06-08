@@ -51,6 +51,8 @@ void FractalRenderer::initGeometry() {
     m_vbo.setUsagePattern(QOpenGLBuffer::StaticDraw);
     m_vbo.allocate(vertices, sizeof(vertices));
 
+    m_program->bindAttributeLocation("aPos", 0);
+
     // tell gpu that attribute 0 means xyz coords
     m_program->enableAttributeArray(0);
     m_program->setAttributeBuffer(0, GL_FLOAT, 0, 3, 3 * sizeof(GLfloat));
@@ -67,8 +69,17 @@ void FractalRenderer::paint() {
         m_initialized = true;
     }
 
-    glViewport(0, 0, m_width, m_height);
-    glClear(GL_COLOR_BUFFER_BIT);
+    QQuickWindow *window = qobject_cast<QQuickWindow*>(sender());
+
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    glViewport(0, 0, viewport[2], viewport[3]);
+
+    if (window) window->beginExternalCommands();
+
+    glClearColor(0.1f, 0.0f, 0.2f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
 
     // activate shader program
     m_program->bind();
@@ -78,11 +89,16 @@ void FractalRenderer::paint() {
 
     m_vao.release();
     m_program->release();
+
+    if (window) window->endExternalCommands();
 }
 
 // wrapper functions
 
 FractalEngine::FractalEngine() {
+    // notify qt that this item renders raw content
+    setFlag(ItemHasContents, true);
+
     connect(this, &QQuickItem::windowChanged, this, &FractalEngine::handleWindowChanged);
 }
 
@@ -96,7 +112,10 @@ void FractalEngine::handleWindowChanged(QQuickWindow *window) {
 void FractalEngine::sync() {
     if (!m_renderer) {
         m_renderer = new FractalRenderer();
-        connect(window(), &QQuickWindow::beforeRenderPassRecording, m_renderer, &FractalRenderer::paint, Qt::DirectConnection);
+
+        window()->setColor(QColor(Qt::transparent));
+
+        connect(window(), &QQuickWindow::afterRendering, m_renderer, &FractalRenderer::paint, Qt::DirectConnection);
     }
     m_renderer->setWindowSize(window()->width() * window()->devicePixelRatio(),
         window()->height() * window()->devicePixelRatio());

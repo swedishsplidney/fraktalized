@@ -7,6 +7,7 @@ Window {
     width: 1280
     height: 720
     title: "fraktalized"
+
     color: "#0d0e15"
 
     // openGL viewport
