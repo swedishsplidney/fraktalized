@@ -2,22 +2,30 @@
 
 out vec4 FragColor;
 
+// dynamic inputs
 uniform vec2 u_resolution;
+uniform vec2 u_zoom_center;
+uniform float u_zoom_level;
+uniform float u_max_iter;
+uniform vec3 u_color_tint;
 
 void main() {
-    // normalize pixel coords
-    vec2 st = (gl_FragCoord.xy / u_resolution) * 2.0 - 1.0;
-    st.x *= 1.770;
+    vec2 res = (u_resolution.x > 0.0 && u_resolution.y > 0.0) ? u_resolution : vec2(1280.0, 720.0);
 
-    // map coords to complex plane complex boundaries, shifting slightly to the left to center
-    vec2 c = st * 0.4 - vec2(1.1, 0.0);
+    // normalize aspect ratio
+    vec2 st = (gl_FragCoord.xy / res) * 2.0 - 1.0;
+    st.x *= (res.x / res.y);
+
+    // use dynamic zoom level and center
+    vec2 c = st * u_zoom_level + u_zoom_center;
     vec2 z = vec2(0.0, 0.0);
 
-    float iter = 0.0;
-    float max_iter = 100.0;
+    float iter = u_max_iter;
 
     // fractal loop Z = Z^2 + C
-    for (float i = 0.0; i < max_iter; i++) {
+    for (int i = 0; i < 250; i++) {
+        if (float(i) >= u_max_iter) break; // break early to actually use the corret iteration count
+
         // complex squaring math: real (x^2 - y^2) and imaginary (2*x*y)
         float x_next = z.x * z.x - z.y * z.y + c.x;
         float y_next = 2.0 * z.x * z.y + c.y;
@@ -26,25 +34,25 @@ void main() {
 
         // if it escapes radius 2 (diameter 4), it bounds off towards infinity (bad)
         if (dot(z, z) > 4.0) {
-            iter = i;
+            iter = float(i);
             break;
         }
     }
 
     // color mapping
-    if (iter == max_iter) {
+    if (iter >= u_max_iter) {
         // points inside set stay black
         FragColor = vec4(0.0, 0.0, 0.0, 1.0);
     } else {
         // normalize escape velocity to 0.0 > x > 1.0
-        float t = iter / max_iter;
+        float t = iter / u_max_iter;
 
         // procedural color
-        vec3 color = vec3(t * 0.3, 0.0, t * 0.65);
+        vec3 color = t * u_color_tint;
 
         // exponentially boost brightness at edges
-        color += vec3(pow(t, 5.0) * 0.6);
+        color += vec3(pow(t, 8.0) * 3.5) * vec3(1.2, 0.5, 1.0);
 
-        FragColor = vec4(color, 1.0); // opaque
+        FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
     }
 }

@@ -13,6 +13,10 @@ Window {
     FractalEngine {
         id: engine
         anchors.fill: parent
+
+        maxIterations: Math.round(maxIterationsSlider.value)
+
+        colorTint: Qt.vector3d(rSlider.value, gSlider.value, bSlider.value)
     }
 
     // floating panel
@@ -40,18 +44,48 @@ Window {
                 font.family: "Monospace"
             }
 
+            // iteration controls
+
             Text {
-                text: "adjust rendering parameters:"
+                text: "iterations / detail:"
                 color: "#8a90a6"
                 font.pixelSize: 13
             }
 
             Slider {
-                id: maxIterations
+                id: maxIterationsSlider
                 width: parent.width
                 from: 10
-                to: 1000
+                to: 250
                 value: 100
+            }
+
+            // color controls
+            Text {
+                text: "color setup:"
+                color: "#8a90a6"
+                font.pixelSize: 13
+            }
+
+            Column {
+                width: parent.width
+                spacing: 5
+                Text { text: "red:"; color: "#ff5555"; font.pixelSize: 11 }
+                Slider { id: rSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2 }
+            }
+
+            Column {
+                width: parent.width
+                spacing: 5
+                Text { text: "green:"; color: "#55ff55"; font.pixelSize: 11 }
+                Slider { id: gSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2 }
+            }
+
+            Column {
+                width: parent.width
+                spacing: 5
+                Text { text: "blue:"; color: "#5555ff"; font.pixelSize: 11 }
+                Slider { id: bSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2 }
             }
         }
     }

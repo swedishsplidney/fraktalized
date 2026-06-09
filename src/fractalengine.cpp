@@ -19,7 +19,7 @@ void FractalFBORenderer::init() {
     bool vLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/fractal.vert");
     bool fLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/fractal.frag");
 
-    std::cout << "[fbo init] shaders -> vertex: " << (vLoaded ? "ok" : "fail")
+    std::cout << "shaders -> vertex: " << (vLoaded ? "ok" : "fail")
               << " | fragment: " << (fLoaded ? "ok" : "fail") << std::endl;
 
     m_program->bindAttributeLocation("aPos", 0);
@@ -50,7 +50,14 @@ void FractalFBORenderer::render() {
     glDisable(GL_BLEND);
 
     m_program->bind();
+
     m_program->setUniformValue("u_resolution", QVector2D(width, height));
+    m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
+
+    m_program->setUniformValue("u_zoom_level", 0.4f);
+    m_program->setUniformValue("u_zoom_center", QVector2D(-1.1f, 0.0f));
+
+    m_program->setUniformValue("u_color_tint", m_colorTint);
 
     // local coordinate structure passed down to the pipeline unit
     GLfloat rawVertices[] = {
@@ -70,9 +77,6 @@ void FractalFBORenderer::render() {
 
     m_program->disableAttributeArray(0);
     m_program->release();
-
-    // force the fbo loop layer to schedule a visual frame state update sequence
-    update();
 }
 
 // fractalengine implementation
@@ -83,4 +87,10 @@ FractalEngine::FractalEngine() {
 
 QQuickFramebufferObject::Renderer *FractalEngine::createRenderer() const {
     return new FractalFBORenderer();
+}
+
+void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
+    auto *engine = static_cast<FractalEngine *>(item);
+    this->setMaxIterations(engine->maxIterations());
+    this->setColorTint(engine->colorTint());
 }
