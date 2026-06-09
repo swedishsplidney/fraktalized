@@ -77,7 +77,7 @@ Window {
 
             Text {
                 text: "fraktalized core"
-                color: "#00ffcc"
+                color: "#7d00ff"
                 font.pixelSize: 18
                 font.bold: true
                 font.family: "Monospace"
