@@ -43,6 +43,27 @@ void FractalFBORenderer::render() {
     int width = fbo->width();
     int height = fbo->height();
 
+    // smoothing lerp
+    double lerpSpeed = 0.12f;
+    m_currentZoom += (m_targetZoom - m_currentZoom) * lerpSpeed;
+    m_currentCenterX += (m_targetCenterX - m_currentCenterX) * lerpSpeed;
+    m_currentCenterY += (m_targetCenterY - m_currentCenterY) * lerpSpeed;
+
+    // threshholds scaled by zoom amount
+    double zoomSnapLimit = m_targetZoom * 0.0005f;
+    double centerSnapLimit = (m_targetZoom * m_targetZoom) * 0.000005f;
+
+    if (std::abs(m_targetZoom - m_currentZoom) < zoomSnapLimit) {
+        m_currentZoom = m_targetZoom;
+    }
+
+    if (std::abs(m_targetCenterX - m_currentCenterX) < centerSnapLimit) m_currentCenterX = m_targetCenterX;
+    if (std::abs(m_targetCenterY - m_currentCenterY) < centerSnapLimit) m_currentCenterY = m_targetCenterY;
+
+    if (m_currentZoom != m_targetZoom || m_currentCenterX != m_targetCenterX || m_currentCenterY != m_targetCenterY) {
+        update();
+    }
+
     // isolate state adjustments
     glViewport(0, 0, width, height);
     glDisable(GL_DEPTH_TEST);
@@ -53,11 +74,10 @@ void FractalFBORenderer::render() {
 
     m_program->setUniformValue("u_resolution", QVector2D(width, height));
     m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
-
-    m_program->setUniformValue("u_zoom_level", 0.4f);
-    m_program->setUniformValue("u_zoom_center", QVector2D(-1.1f, 0.0f));
-
     m_program->setUniformValue("u_color_tint", m_colorTint);
+
+    m_program->setUniformValue("u_zoom_level", static_cast<float>(m_currentZoom));
+    m_program->setUniformValue("u_zoom_center", QVector2D(static_cast<float>(m_currentCenterX), static_cast<float>(m_currentCenterY)));
 
     // local coordinate structure passed down to the pipeline unit
     GLfloat rawVertices[] = {
@@ -93,4 +113,7 @@ void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
     auto *engine = static_cast<FractalEngine *>(item);
     this->setMaxIterations(engine->maxIterations());
     this->setColorTint(engine->colorTint());
+
+    this->setTargetZoom(engine->zoomLevel());
+    this->setTargetCenter(engine->zoomCenterX(), engine->zoomCenterY());
 }

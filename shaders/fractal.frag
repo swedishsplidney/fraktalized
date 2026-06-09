@@ -23,7 +23,7 @@ void main() {
     float iter = u_max_iter;
 
     // fractal loop Z = Z^2 + C
-    for (int i = 0; i < 250; i++) {
+    for (int i = 0; i < 500; i++) {
         if (float(i) >= u_max_iter) break; // break early to actually use the corret iteration count
 
         // complex squaring math: real (x^2 - y^2) and imaginary (2*x*y)
@@ -51,7 +51,7 @@ void main() {
         vec3 color = t * u_color_tint;
 
         // exponentially boost brightness at edges
-        color += vec3(pow(t, 8.0) * 3.5) * vec3(1.2, 0.5, 1.0);
+        color += vec3(pow(t, 2.0) * 0.4);
 
         FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
     }

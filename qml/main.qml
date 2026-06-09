@@ -17,6 +17,45 @@ Window {
         maxIterations: Math.round(maxIterationsSlider.value)
 
         colorTint: Qt.vector3d(rSlider.value, gSlider.value, bSlider.value)
+
+        // mouse interaction layer
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+
+            // track drag gestures
+            property point lastPos: Qt.point(0, 0)
+
+            onPressed: (mouse) => {
+                lastPos = Qt.point(mouse.x, mouse.y)
+            }
+
+            onPositionChanged: (mouse) => {
+                if (mouse.buttons & Qt.LeftButton) {
+                    // calc pixel differences
+                    var dx = mouse.x - lastPos.x
+                    var dy = mouse.y - lastPos.y
+
+                    engine.panCamera(dx, dy, parent.width, parent.height)
+
+                    lastPos = Qt.point(mouse.x, mouse.y)
+                }
+            }
+
+            // scroll wheel logic
+            onWheel: (wheel) => {
+                var zoomFactor = 1.15
+                if (wheel.angleDelta.y > 0) {
+                    // zoom in
+                    engine.zoomLevel /= zoomFactor
+                } else {
+                    // zoom out
+                    engine.zoomLevel *= zoomFactor
+                }
+
+                wheel.accepted = true
+            }
+        }
     }
 
     // floating panel
@@ -56,8 +95,10 @@ Window {
                 id: maxIterationsSlider
                 width: parent.width
                 from: 10
-                to: 250
+                to: 500
                 value: 100
+
+                onPressedChanged: if (pressed) forceActiveFocus()
             }
 
             // color controls
@@ -71,21 +112,21 @@ Window {
                 width: parent.width
                 spacing: 5
                 Text { text: "red:"; color: "#ff5555"; font.pixelSize: 11 }
-                Slider { id: rSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2 }
+                Slider { id: rSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2; onPressedChanged: if (pressed) forceActiveFocus() }
             }
 
             Column {
                 width: parent.width
                 spacing: 5
                 Text { text: "green:"; color: "#55ff55"; font.pixelSize: 11 }
-                Slider { id: gSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2 }
+                Slider { id: gSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2; onPressedChanged: if (pressed) forceActiveFocus() }
             }
 
             Column {
                 width: parent.width
                 spacing: 5
                 Text { text: "blue:"; color: "#5555ff"; font.pixelSize: 11 }
-                Slider { id: bSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2 }
+                Slider { id: bSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2; onPressedChanged: if (pressed) forceActiveFocus() }
             }
         }
     }
