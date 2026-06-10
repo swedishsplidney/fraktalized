@@ -32,6 +32,8 @@ Window {
 
             onPressed: (mouse) => {
                 lastPos = Qt.point(mouse.x, mouse.y)
+
+                sidebar.forceActiveFocus()
             }
 
             onPositionChanged: (mouse) => {
@@ -73,6 +75,7 @@ Window {
         border.color: "#35ffffff"
         radius: 12
         z: 1
+        focus: true
 
         Column {
             anchors.fill: parent
@@ -101,21 +104,278 @@ Window {
             }
 
             // iteration controls
-
-            Text {
-                text: "iterations / detail:"
-                color: "#8a90a6"
-                font.pixelSize: 13
-            }
-
-            Slider {
-                id: maxIterationsSlider
+            Column {
                 width: parent.width
-                from: 10
-                to: 500
-                value: 100
+                spacing: 6
 
-                onPressedChanged: if (pressed) forceActiveFocus()
+                // header
+                Row {
+                    width: parent.width
+                    height: 24
+                    spacing: 6
+
+                    Text {
+                        text: "iterations / detail"
+                        color: "#8a90a6"
+                        font.pixelSize: 13
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    // menu button
+                    Button {
+                        id: menuButton
+                        width: 24
+                        height: 24
+                        flat: true
+                        checkable: true
+
+                        background: Item {
+                        } // invis bg
+
+                        contentItem: Text {
+                            text: menuButton.checked ? "∨" : ">"
+                            font.pixelSize: 14
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            color: menuButton.hovered ? "#7d00ff" : "#8a90a6"
+                        }
+                    }
+                }
+
+                // settings panel
+                Column {
+                    id: iterationsSettings
+                    width: parent.width
+                    spacing: 8
+                    clip: true
+
+                    visible: menuButton.checked || heightAnimation.running > 0
+
+                    // smooth animation
+                    height: menuButton.checked ? 55 : 0
+
+                    Behavior on height {
+                        NumberAnimation {
+                            id: heightAnimation
+                            duration: 150
+                        }
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+
+                        // min input
+                        Column {
+                            width: (parent.width - 10) / 2
+                            spacing: 3
+                            Text { text: "min value:"; color: "#aaaaaa"; font.pixelSize: 10 }
+                            TextField {
+                                id: minLimitInput
+                                width: parent.width
+                                height: 28
+                                text: "1"
+                                placeholderText: "0"
+                                selectByMouse: true
+                                color: "#ffffff"
+                                font.pixelSize: 12
+                                verticalAlignment: TextInput.AlignVCenter
+                                leftPadding: 8
+
+                                background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+
+                                onTextChanged: {
+                                    var val = parseInt(text)
+                                    if (!isNaN(val) && val >= 0) maxIterationsSlider.from = val
+                                }
+                            }
+                        }
+
+                        // max input
+                        Column {
+                            width: (parent.width - 10) / 2
+                            spacing: 3
+                            Text { text: "max value:"; color: "#aaaaaa"; font.pixelSize: 10 }
+                            TextField {
+                                id: maxLimitInput
+                                width: parent.width
+                                height: 28
+                                text: "500"
+                                placeholderText: "0"
+                                selectByMouse: true
+                                color: "#ffffff"
+                                font.pixelSize: 12
+                                verticalAlignment: TextInput.AlignVCenter
+                                leftPadding: 8
+
+                                background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+
+                                onTextChanged: {
+                                    var val = parseInt(text)
+                                    if (!isNaN(val)) {
+                                        maxIterationsSlider.to = val
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // warn box
+                Rectangle {
+                    id: warnBox
+                    width: parent.width
+                    clip: true
+                    color: "#2a0808"
+                    border.color: "#ff3333"
+                    border.width: 1
+                    radius: 6
+
+                    property bool isDismissed: false
+                    property bool shouldShow: (Math.round(maxIterationsSlider.value) > 1500) && !isDismissed
+
+                    visible: shouldShow || warnAnimation.running
+                    height: shouldShow ? 60 : 0
+
+                    Behavior on height { NumberAnimation { id: warnAnimation; duration: 150 } }
+
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 4
+
+                        Text {
+                            text: "warning"
+                            color: "#ff3333"
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+                        Text {
+                            text: "values over 1500 iterations can cause problems on low-end hardware"
+                            color: "#ffaaaa"
+                            font.pixelSize: 9
+                            wrapMode: Text.Wrap
+                            width: parent.width - 10
+                        }
+                    }
+
+                    // dismiss button
+                    Button {
+                        id: okButton
+                        width: 36
+                        height: 20
+                        anchors.bottom: parent.bottom
+                        anchors.right: parent.right
+                        anchors.margins: 6
+
+                        background: Rectangle {
+                            color: okButton.hovered ? "#ff3333" : "#4a1212"
+                            radius: 4
+                            border.color: "#ff3333"
+                            border.width: 1
+
+                            Behavior on color { ColorAnimation { duration: 100 } }
+                        }
+
+                        contentItem: Text {
+                            text: "ok"
+                            color: okButton.hovered ? "#2a0808" : "#ff3333"
+                            font.pixelSize: 10
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        onClicked: {
+                            warnBox.isDismissed = true
+                        }
+                    }
+                }
+
+                Column {
+                    width: parent.width
+                    spacing: -4
+
+                    // slider
+                    Slider {
+                        id: maxIterationsSlider
+                        width: parent.width
+                        from: 10
+                        to: 500
+                        value: 100
+
+                        onPressedChanged: if (pressed) forceActiveFocus()
+                    }
+
+                    // display current value and have a clickable box
+                    TextField {
+                        id: currentValueInput
+                        width: parent.width
+                        height: 30
+                        color: activeFocus ? "#ffffff" : "#8a90a6"
+                        font.pixelSize: 10
+                        font.family: "Monospace"
+                        selectByMouse: true
+                        verticalAlignment: TextInput.AlignVCenter
+                        leftPadding: 4
+
+                        property bool isOutOfBounds: false
+
+                        Binding on text {
+                            when: !currentValueInput.activeFocus && !currentValueInput.isOutOfBounds
+                            value: "current: " + Math.round(maxIterationsSlider.value)
+                        }
+
+                        // numbers only
+                        validator: IntValidator {
+                            bottom: 0
+                            top: 2147483647
+                        }
+
+                        background: Rectangle {
+                            color: parent.activeFocus ? "#221133" : "transparent"
+                            border.color: parent.activeFocus ? "#7d00ff" : "transparent"
+                            border.width: 1
+                            radius: 4
+                        }
+
+                        Timer {
+                            id: resetTimer
+                            interval: 1200
+                            onTriggered: {
+                                currentValueInput.isOutOfBounds = false
+                            }
+                        }
+
+                        onEditingFinished: {
+                            var val = parseInt(text)
+                            if (!isNaN(val)) {
+                                // make sure its within the set range
+                                if ((val > maxIterationsSlider.to) || (val < maxIterationsSlider.from)) {
+                                    currentValueInput.isOutOfBounds = true
+                                    currentValueInput.text = "outside of currently set range"
+                                    resetTimer.restart()
+                                }
+
+                                val = Math.max(maxIterationsSlider.from, Math.min(val, maxIterationsSlider.to))
+                                maxIterationsSlider.value = val
+                            }
+                            deselect()
+                            focus = false
+                            rootWindow.contentItem.focus = true
+                            rootWindow.contentItem.forceActiveFocus()
+                        }
+
+                        onActiveFocusChanged: {
+                            if (activeFocus) {
+                                resetTimer.stop()
+                                currentValueInput.isOutOfBounds = false
+                                text = Math.round(maxIterationsSlider.value).toString()
+                                selectAll()
+                            }
+                        }
+                    }
+                }
             }
 
             // color controls

@@ -38,7 +38,7 @@ void main() {
     float iter = u_max_iter;
 
     // fractal loop Z = Z^2 + C
-    for (int i = 0; i < 500; i++) {
+    for (int i = 0; i < 3000; i++) {
         if (float(i) >= u_max_iter) break; // break early to actually use the corret iteration count
 
         // complex squaring math: real (x^2 - y^2) and imaginary (2*x*y)
