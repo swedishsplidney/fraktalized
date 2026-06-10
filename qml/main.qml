@@ -76,7 +76,7 @@ Window {
             spacing: 20
 
             Text {
-                text: "fraktalized core"
+                text: "fraktalized"
                 color: "#7d00ff"
                 font.pixelSize: 18
                 font.bold: true
