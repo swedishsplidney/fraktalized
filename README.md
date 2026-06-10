@@ -33,7 +33,7 @@ controls a high-performance fragment shader inside a framebuffer object.
 
 ## ai disclosure:
 
-no generative ai or LLMs were used to write any of this code
+no generative ai or LLMs were used to write any of this stuff
 
 ---
 
