@@ -49,7 +49,7 @@ void FractalFBORenderer::render() {
     m_currentCenterX += (m_targetCenterX - m_currentCenterX) * lerpSpeed;
     m_currentCenterY += (m_targetCenterY - m_currentCenterY) * lerpSpeed;
 
-    // threshholds scaled by zoom amount
+    // thresholds scaled by zoom amount
     double zoomSnapLimit = m_targetZoom * 0.0005f;
     double centerSnapLimit = (m_targetZoom * m_targetZoom) * 0.000005f;
 
@@ -78,6 +78,10 @@ void FractalFBORenderer::render() {
 
     m_program->setUniformValue("u_zoom_level", static_cast<float>(m_currentZoom));
     m_program->setUniformValue("u_zoom_center", QVector2D(static_cast<float>(m_currentCenterX), static_cast<float>(m_currentCenterY)));
+
+    m_program->setUniformValue("u_fractal_type", m_fractalType);
+
+    m_program->setUniformValue("u_julia_c", m_juliaC);
 
     // local coordinate structure passed down to the pipeline unit
     GLfloat rawVertices[] = {
@@ -116,4 +120,8 @@ void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
 
     this->setTargetZoom(engine->zoomLevel());
     this->setTargetCenter(engine->zoomCenterX(), engine->zoomCenterY());
+
+    this->setFractalType(engine->fractalType());
+
+    this->setJuliaC(engine->juliaC());
 }

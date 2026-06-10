@@ -18,6 +18,10 @@ Window {
 
         colorTint: Qt.vector3d(rSlider.value, gSlider.value, bSlider.value)
 
+        fractalType: typeSelector.currentIndex
+
+        juliaC: Qt.vector2d(parseFloat(realInput.text), parseFloat(imagInput.text))
+
         // mouse interaction layer
         MouseArea {
             anchors.fill: parent
@@ -83,6 +87,19 @@ Window {
                 font.family: "Monospace"
             }
 
+            // set changer
+            ComboBox {
+                id: typeSelector
+                width: parent.width
+                model: ["mandelbrot set", "julia set"]
+
+                // reset zoom on switch
+                onCurrentIndexChanged: {
+                    engine.zoomLevel = 2.0
+                    engine.zoomCenter = Qt.vector2d(currentIndex === 0 ? -0.5 : 0.0, 0.0)
+                }
+            }
+
             // iteration controls
 
             Text {
@@ -127,6 +144,57 @@ Window {
                 spacing: 5
                 Text { text: "blue:"; color: "#5555ff"; font.pixelSize: 11 }
                 Slider { id: bSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2; onPressedChanged: if (pressed) forceActiveFocus() }
+            }
+
+            // julia set constant value setter
+            Column {
+                width: parent.width
+                spacing: 8
+                // only show when julia set
+                visible: typeSelector.currentIndex === 1
+
+                Text {
+                    text: "julia constant (c):"
+                    color: "#7d00ff"
+                    font.pixelSize: 12; font.family: "Monospace"
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: 10
+
+                    // real value
+                    Column {
+                        width: (parent.width - 10) / 2
+                        spacing: 3
+                        Text { text: "real (x):"; color: "#aaaaaa"; font.pixelSize: 10 }
+                        TextField {
+                            id: realInput
+                            width: parent.width
+                            text: "-0.7"
+                            placeholderText: "0.0"
+                            selectByMouse: true
+                            color: "#ffffff"
+                            background: Rectangle { color: "#222222"; radius: 4}
+                        }
+                    }
+
+                    // imaginary value
+                    Column {
+                        width: (parent.width - 10) / 2
+                        spacing: 3
+                        Text { text: "imag (y):"; color: "#aaaaaa"; font.pixelSize: 10 }
+                        TextField {
+                            id: imagInput
+                            width: parent.width
+                            text: "0.27015"
+                            placeholderText: "0.0"
+                            selectByMouse: true
+                            color: "#ffffff"
+                            background: Rectangle { color: "#222222"; radius: 4 }
+                        }
+                    }
+                }
             }
         }
     }

@@ -26,6 +26,10 @@ public:
     void setTargetZoom(double zoom) {m_targetZoom = zoom; }
     void setTargetCenter(double x, double y) { m_targetCenterX = x; m_targetCenterY = y; }
 
+    void setFractalType(int type) { m_fractalType = type; }
+
+    void setJuliaC(const QVector2D &c) { m_juliaC = c; }
+
 private:
     bool m_initialized = false;
     QOpenGLShaderProgram *m_program = nullptr;
@@ -38,6 +42,10 @@ private:
     double m_currentCenterY = 0.0;
     double m_targetCenterX = -0.5;
     double m_targetCenterY = 0.0;
+
+    int m_fractalType = 0;
+
+    QVector2D m_juliaC = QVector2D(-0.7f, 0.27015f);
 
     void init();
 };
@@ -52,10 +60,28 @@ class FractalEngine : public QQuickFramebufferObject {
     Q_PROPERTY(float zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomLevelChanged)
     Q_PROPERTY(QVector2D zoomCenter READ zoomCenter WRITE setZoomCenter NOTIFY zoomCenterChanged)
 
+    Q_PROPERTY(int fractalType READ fractalType WRITE setFractalType NOTIFY fractalTypeChanged)
+    Q_PROPERTY(QVector2D juliaC READ juliaC WRITE setJuliaC NOTIFY juliaCChanged)
+
 public:
     FractalEngine();
 
     Renderer *createRenderer() const override;
+
+    // fractal type getter / setter
+    int fractalType() const { return m_fractalType; }
+    void setFractalType(int val) {
+        if (m_fractalType != val) { m_fractalType = val; emit fractalTypeChanged(); update(); }
+    }
+
+    QVector2D juliaC() const { return m_juliaC; }
+    void setJuliaC(const QVector2D &val) {
+        if (m_juliaC != val) {
+            m_juliaC = val;
+            emit juliaCChanged();
+            update();
+        }
+    }
 
     // getter and setter for qml stuff
     int maxIterations() const { return m_maxIterations; }
@@ -119,6 +145,8 @@ signals:
     void colorTintChanged();
     void zoomLevelChanged();
     void zoomCenterChanged();
+    void fractalTypeChanged();
+    void juliaCChanged();
 
 private:
     int m_maxIterations = 100;
@@ -127,6 +155,10 @@ private:
     double m_zoomLevel = 2.0;
     double m_zoomCenterX = -0.5;
     double m_zoomCenterY = 0.0;
+
+    int m_fractalType = 0;
+
+    QVector2D m_juliaC = QVector2D(-0.7f, 0.27015f);
 };
 
 #endif
