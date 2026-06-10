@@ -174,7 +174,7 @@ Window {
                                 id: minLimitInput
                                 width: parent.width
                                 height: 28
-                                text: "1"
+                                text: "10"
                                 placeholderText: "0"
                                 selectByMouse: true
                                 color: "#ffffff"
@@ -455,6 +455,44 @@ Window {
                         }
                     }
                 }
+            }
+        }
+
+        // reset button
+        Button {
+            id: resetButton
+            text: "reset view"
+            width: 110
+            height: 30
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: 25
+
+            background: Rectangle {
+                color: resetButton.hovered ? "#331155" : "#1a0d26"
+                border.color: resetButton.hovered ? "#7d00ff" : "#443355"
+                border.width: 1
+                radius: 6
+            }
+
+            contentItem: Text {
+                text: resetButton.text
+                color: resetButton.hovered ? "#ffffff" : "#8a90a6"
+                font.pixelSize: 12
+                font.family: "Monospace"
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            onClicked: {
+                engine.zoomLevel = 2.0
+                if (typeSelector.currentIndex === 0) {
+                    engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
+                } else if (typeSelector.currentIndex === 1) {
+                    engine.zoomCenter = Qt.vector2d(0.0, 0.0)
+                }
+                maxIterationsSlider.value = 100
+            sidebar.forceActiveFocus()
             }
         }
     }
