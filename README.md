@@ -1,10 +1,10 @@
 ```
-    ____           __   __        ___                __
-   / __/________ _/ /__/ /_____ _/ (_)___  ___  ____/ /
-  / /_/ ___/ __ `/ //_/ __/ __ `/ / /_  / / _ \/ __  / 
- / __/ /  / /_/ / ,< / /_/ /_/ / / / / /_/  __/ /_/ /  
-/_/ /_/   \__,_/_/|_|\__/\__,_/_/_/ /___/\___/\__,_/
-                the open-source, cross-platform fractal explorer
+                    ____           __   __        ___                __
+                   / __/________ _/ /__/ /_____ _/ (_)___  ___  ____/ /
+                  / /_/ ___/ __ `/ //_/ __/ __ `/ / /_  / / _ \/ __  / 
+                 / __/ /  / /_/ / ,< / /_/ /_/ / / / / /_/  __/ /_/ /  
+                /_/ /_/   \__,_/_/|_|\__/\__,_/_/_/ /___/\___/\__,_/
+                                the open-source, cross-platform fractal explorer
 ```
 an open-source, cross-platform ultra smooth real time fractal explorer
 built using a hybrid architecture of Qt6 (QML/C++) and openGL (GLSL 330 core).
