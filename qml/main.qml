@@ -232,7 +232,7 @@ Window {
                     radius: 6
 
                     property bool isDismissed: false
-                    property bool shouldShow: (Math.round(maxIterationsSlider.value) > 1500) && !isDismissed
+                    property bool shouldShow: (Math.round(maxIterationsSlider.value) > 2500) && !isDismissed
 
                     visible: shouldShow || warnAnimation.running
                     height: shouldShow ? 60 : 0
@@ -251,7 +251,7 @@ Window {
                             font.bold: true
                         }
                         Text {
-                            text: "values over 1500 iterations can cause problems on low-end hardware"
+                            text: "values over 2500 iterations can cause problems on low-end hardware"
                             color: "#ffaaaa"
                             font.pixelSize: 9
                             wrapMode: Text.Wrap
@@ -294,7 +294,7 @@ Window {
 
                 Column {
                     width: parent.width
-                    spacing: -4
+                    spacing: 1
 
                     // slider
                     Slider {
@@ -310,14 +310,17 @@ Window {
                     // display current value and have a clickable box
                     TextField {
                         id: currentValueInput
-                        width: parent.width
-                        height: 30
+                        width: contentWidth + 12
+                        height: contentHeight + 4
+                        topPadding: 2
+                        bottomPadding: 2
+                        leftPadding: 6
+                        rightPadding: 6
                         color: activeFocus ? "#ffffff" : "#8a90a6"
                         font.pixelSize: 10
                         font.family: "Monospace"
                         selectByMouse: true
                         verticalAlignment: TextInput.AlignVCenter
-                        leftPadding: 4
 
                         property bool isOutOfBounds: false
 
