@@ -14,14 +14,16 @@ uniform vec3 u_color_tint;
 uniform int u_fractal_type; // 0 = mandelbrot, 1 = julia
 uniform dvec2 u_julia_c;     // constant point
 
+uniform vec4 u_tile_bounds;
+
 void main() {
-    vec2 res = (u_resolution.x > 0.0 && u_resolution.y > 0.0) ? u_resolution : vec2(1280.0, 720.0);
-
     // normalize aspect ratio
-    vec2 st = v_coord;
-    st.x *= (res.x / res.y);
+    vec2 normalizedCoord = vec2(
+        mix(u_tile_bounds.x, u_tile_bounds.z, v_coord.x * 0.5 + 0.5),
+        mix(u_tile_bounds.y, u_tile_bounds.w, v_coord.y * 0.5 + 0.5)
+    );
 
-    dvec2 coord = dvec2(st) * u_zoom_level + u_zoom_center;
+    dvec2 coord = dvec2(normalizedCoord) * u_zoom_level + u_zoom_center;
 
     dvec2 z;
     dvec2 c;
@@ -40,7 +42,7 @@ void main() {
     float iter = u_max_iter;
 
     // fractal loop Z = Z^2 + C
-    for (int i = 0; i < 3000; i++) {
+    for (int i = 0; i < 2147483647; i++) {
         if (float(i) >= u_max_iter) break; // break early to actually use the corret iteration count
 
         // complex squaring math: real (x^2 - y^2) and imaginary (2*x*y)

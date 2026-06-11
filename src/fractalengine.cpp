@@ -1,6 +1,7 @@
 #include "fractalengine.h"
 #include <iostream>
 #include <QOpenGLFramebufferObject>
+#include <QPainter>
 
 FractalFBORenderer::FractalFBORenderer() {
     // constructor runs safely on the dedicated graphics render thread context loop
@@ -72,6 +73,22 @@ void FractalFBORenderer::render() {
 
     m_program->bind();
 
+    float screenAspect = (float)width / (float)height;
+    float scaleX = 1.0f;
+    float scaleY = 1.0f;
+
+    if (width >= height) {
+        // landscape
+        scaleX = 1.0f;
+        scaleY = 1.0f / screenAspect;
+    } else {
+        // portrait
+        scaleX = screenAspect;
+        scaleY = 1.0f;
+    }
+
+    m_program->setUniformValue("u_tile_bounds", QVector4D(-scaleX, -scaleY, scaleX, scaleY));
+
     m_program->setUniformValue("u_resolution", QVector2D(width, height));
     m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
     m_program->setUniformValue("u_color_tint", m_colorTint);
@@ -115,74 +132,124 @@ void FractalFBORenderer::render() {
     if (m_pendingExport && m_exportWidth > 0 && m_exportHeight > 0) {
         m_pendingExport = false;
 
-        qDebug() << "allocating off-screen target frame space:" << m_exportWidth << "x" << m_exportHeight;
+        qDebug() << "started tiling render:" << m_exportWidth << "x" << m_exportHeight;
 
-        // allocate a separate isolated frame canvas matching the custom resolution size
-        QOpenGLFramebufferObjectFormat exportFormat;
-        exportFormat.setAttachment(QOpenGLFramebufferObject::NoAttachment);
-        exportFormat.setInternalTextureFormat(GL_RGBA8);
+        //create the final master image canvas
+        QImage masterImage(m_exportWidth, m_exportHeight, QImage::Format_RGBA8888);
+        masterImage.fill(Qt::black);
 
-        QOpenGLFramebufferObject exportFbo(m_exportWidth, m_exportHeight, exportFormat);
+        // define a tile size
+        const int tileSize = 2000;
 
-        if (exportFbo.bind()) {
-            // match the state bindings
-            glViewport(0, 0, m_exportWidth, m_exportHeight);
-            glDisable(GL_DEPTH_TEST);
-            glDisable(GL_CULL_FACE);
-            glDisable(GL_BLEND);
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
+        // allocate a reusable fbo area for the gpu
+        QOpenGLFramebufferObjectFormat tileFormat;
+        tileFormat.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+        tileFormat.setInternalTextureFormat(GL_RGBA8);
+        QOpenGLFramebufferObject tileFbo(tileSize, tileSize, tileFormat);
 
+        if (tileFbo.bind()) {
             m_program->bind();
 
             // pass layout constraints to the shader
             float highResIterations = m_maxIterations * 1.0f;
-
-            m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
             m_program->setUniformValue("u_max_iter", highResIterations);
             m_program->setUniformValue("u_color_tint", m_colorTint);
             m_program->setUniformValue("u_fractal_type", m_fractalType);
 
-            int expZoomLevel = m_program->uniformLocation("u_zoom_level");
-            int expZoomCenter = m_program->uniformLocation("u_zoom_center");
-            int expJuliaC = m_program->uniformLocation("u_julia_c");
+            // the shader needs the total image resolution
+            m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
 
-            if (expZoomLevel != -1) {
-                this->glUniform1d(expZoomLevel, m_currentZoom);
+            // loop through the image grid one tile at a time
+            for (int y = 0; y < m_exportHeight; y += tileSize) {
+                for (int x = 0; x < m_exportWidth; x += tileSize) {
+
+                    int currentTileWidth = std::min(tileSize, m_exportWidth - x);
+                    int currentTileHeight = std::min(tileSize, m_exportHeight - y);
+
+                    // resize to tile's size
+                    glViewport(0, 0, currentTileWidth, currentTileHeight);
+                    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+                    glClear(GL_COLOR_BUFFER_BIT);
+
+                    // flip y if needed
+                    GLfloat tileVertices[] = {
+                        -1.0f, -1.0f, 0.0f,
+                        1.0f, -1.0f, 0.0f,
+                        -1.0f,  1.0f, 0.0f,
+
+                        -1.0f,  1.0f, 0.0f,
+                        1.0f, -1.0f, 0.0f,
+                        1.0f,  1.0f, 0.0f,
+                    };
+
+                    // calculate render aspect ratio
+                    float exportAspect = (float)m_exportWidth / (float)m_exportHeight;
+                    float expScaleX = 1.0f;
+                    float expScaleY = 1.0f;
+
+                    if (m_exportWidth >= m_exportHeight) {
+                        // landscape
+                        expScaleX = 1.0f;
+                        expScaleY = 1.0f / exportAspect;
+                    } else {
+                        // portrait
+                        expScaleX = exportAspect;
+                        expScaleY = 1.0f;
+                    }
+
+                    // map the x dimension
+                    float xStart = -expScaleX + 2.0f * expScaleX * (float)x / m_exportWidth;
+                    float xEnd   = -expScaleX + 2.0f * expScaleX * (float)(x + currentTileWidth) / m_exportWidth;
+
+                    float openGLYTop    = m_exportHeight - y;
+                    float openGLYBottom = m_exportHeight - (y + currentTileHeight);
+
+                    float yStart = -expScaleY + 2.0f * expScaleY * (openGLYBottom / m_exportHeight);
+                    float yEnd   = -expScaleY + 2.0f * expScaleY * (openGLYTop / m_exportHeight);
+
+                    m_program->setUniformValue("u_tile_bounds", QVector4D(xStart, yStart, xEnd, yEnd));
+
+                    // re-bind double uniform camera stuff
+                    int expZoomLevel = m_program->uniformLocation("u_zoom_level");
+                    int expZoomCenter = m_program->uniformLocation("u_zoom_center");
+                    int expJuliaC = m_program->uniformLocation("u_julia_c");
+
+                    if (expZoomLevel != -1)  this->glUniform1d(expZoomLevel, m_targetZoom);
+                    if (expZoomCenter != -1) this->glUniform2d(expZoomCenter, m_targetCenterX, m_targetCenterY);
+                    if (expJuliaC != -1)     this->glUniform2d(expJuliaC, static_cast<double>(m_juliaC.x()), static_cast<double>(m_juliaC.y()));
+
+                    // render the tile
+                    m_program->enableAttributeArray(0);
+                    m_program->setAttributeArray(0, GL_FLOAT, tileVertices, 3);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                    m_program->disableAttributeArray(0);
+
+                    // flush commands
+                    glFlush();
+
+                    int openGLYSource = tileSize - currentTileHeight;
+                    QImage tileImage = tileFbo.toImage().copy(0, openGLYSource, currentTileWidth, currentTileHeight);
+
+                    // mirror vertically
+                    tileImage = tileImage.mirrored(false, true);
+
+                    int canvasYDestination = m_exportHeight - y - currentTileHeight;
+
+                    // stitch tile into master image
+                    QPainter painter(&masterImage);
+                    painter.drawImage(x, canvasYDestination, tileImage);
+                    painter.end();
+                }
             }
-            if (expZoomCenter != -1) {
-                this->glUniform2d(expZoomCenter, m_currentCenterX, m_currentCenterY);
-            }
-            if (expJuliaC != -1) {
-                this->glUniform2d(expJuliaC, static_cast<double>(m_juliaC.x()), static_cast<double>(m_juliaC.y()));
-            }
 
-            // declare a high res coord array
-            GLfloat highResVertices[] = {
-                -1.0f, -1.0f, 0.0f,
-                1.0f, -1.0f, 0.0f,
-                -1.0f,  1.0f, 0.0f,
-
-                -1.0f,  1.0f, 0.0f,
-                1.0f, -1.0f, 0.0f,
-                1.0f, 1.0f, 0.0f,
-            };
-
-            // re-render full screen geometry over the off-screen canvas target
-            m_program->enableAttributeArray(0);
-            m_program->setAttributeArray(0, GL_FLOAT, highResVertices, 3);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-            m_program->disableAttributeArray(0);
             m_program->release();
+            tileFbo.release();
 
-            // pull pixel data from gpu to storage
-            QImage image = exportFbo.toImage();
-            exportFbo.release();
-
-            if (image.save(m_exportFilename)) {
-                qDebug() << "high-res file successfully saved at: " << m_exportFilename;
+            // save the master image
+            if (masterImage.save(m_exportFilename)) {
+                qDebug() << "successfully rendered:" << m_exportFilename;
             } else {
-                qWarning() << "failed to save the image.";
+                qWarning() << "failed to render image";
             }
 
             // restore viewport
