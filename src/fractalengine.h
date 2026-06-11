@@ -2,13 +2,17 @@
 #define FRACTALENGINE_H
 
 #include <QQuickFramebufferObject>
-#include <QOpenGLFunctions_3_3_Core>
+#include <QOpenGLFunctions_4_0_Core>
 #include <QOpenGLShaderProgram>
 #include <QQuickItem>
 #include <QVector3D>
+#include <QOpenGLFramebufferObjectFormat>
+#include <QImage>
+#include <QDateTime>
+#include <QDebug>
 
 // handles the actual GPU rendering work inside an isolated fbo texture canvas
-class FractalFBORenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_3_3_Core {
+class FractalFBORenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_4_0_Core {
 public:
     FractalFBORenderer();
     ~FractalFBORenderer() override;
@@ -46,6 +50,11 @@ private:
     int m_fractalType = 0;
 
     QVector2D m_juliaC = QVector2D(-0.7f, 0.27015f);
+
+    bool m_pendingExport = false;
+    QString m_exportFilename;
+    int m_exportWidth = 0;
+    int m_exportHeight = 0;
 
     void init();
 };
@@ -140,6 +149,21 @@ public:
         update();
     }
 
+    Q_INVOKABLE void renderToFile(const QString &filename, int width, int height) {
+        m_pendingExport = true;
+        m_exportFilename = filename;
+        m_exportWidth = width;
+        m_exportHeight = height;
+        update();
+    }
+
+    bool hasPendingExport() const { return m_pendingExport; }
+    QString exportFilename() const { return m_exportFilename; }
+    int exportWidth() const { return m_exportWidth; }
+    int exportHeight() const { return m_exportHeight; }
+
+    void clearExportFlag() { m_pendingExport = false; }
+
 signals:
     void maxIterationsChanged();
     void colorTintChanged();
@@ -159,6 +183,11 @@ private:
     int m_fractalType = 0;
 
     QVector2D m_juliaC = QVector2D(-0.7f, 0.27015f);
+
+    bool m_pendingExport = false;
+    QString m_exportFilename;
+    int m_exportWidth = 0;
+    int m_exportHeight = 0;
 };
 
 #endif

@@ -75,13 +75,22 @@ void FractalFBORenderer::render() {
     m_program->setUniformValue("u_resolution", QVector2D(width, height));
     m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
     m_program->setUniformValue("u_color_tint", m_colorTint);
-
-    m_program->setUniformValue("u_zoom_level", static_cast<float>(m_currentZoom));
-    m_program->setUniformValue("u_zoom_center", QVector2D(static_cast<float>(m_currentCenterX), static_cast<float>(m_currentCenterY)));
-
     m_program->setUniformValue("u_fractal_type", m_fractalType);
 
-    m_program->setUniformValue("u_julia_c", m_juliaC);
+    int locZoomLevel = m_program->uniformLocation("u_zoom_level");
+    int locZoomCenter = m_program->uniformLocation("u_zoom_center");
+    int locJuliaC = m_program->uniformLocation("u_julia_c");
+
+    // pass double values directly to the resolver
+    if (locZoomLevel != -1) {
+        this->glUniform1d(locZoomLevel, m_currentZoom);
+    }
+    if (locZoomCenter != -1) {
+        this->glUniform2d(locZoomCenter, m_currentCenterX, m_currentCenterY);
+    }
+    if (locJuliaC != -1) {
+        this->glUniform2d(locJuliaC, static_cast<double>(m_juliaC.x()), static_cast<double>(m_juliaC.y()));
+    }
 
     // local coordinate structure passed down to the pipeline unit
     GLfloat rawVertices[] = {
@@ -101,6 +110,85 @@ void FractalFBORenderer::render() {
 
     m_program->disableAttributeArray(0);
     m_program->release();
+
+    // render to file engine
+    if (m_pendingExport && m_exportWidth > 0 && m_exportHeight > 0) {
+        m_pendingExport = false;
+
+        qDebug() << "allocating off-screen target frame space:" << m_exportWidth << "x" << m_exportHeight;
+
+        // allocate a separate isolated frame canvas matching the custom resolution size
+        QOpenGLFramebufferObjectFormat exportFormat;
+        exportFormat.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+        exportFormat.setInternalTextureFormat(GL_RGBA8);
+
+        QOpenGLFramebufferObject exportFbo(m_exportWidth, m_exportHeight, exportFormat);
+
+        if (exportFbo.bind()) {
+            // match the state bindings
+            glViewport(0, 0, m_exportWidth, m_exportHeight);
+            glDisable(GL_DEPTH_TEST);
+            glDisable(GL_CULL_FACE);
+            glDisable(GL_BLEND);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            m_program->bind();
+
+            // pass layout constraints to the shader
+            float highResIterations = m_maxIterations * 1.0f;
+
+            m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
+            m_program->setUniformValue("u_max_iter", highResIterations);
+            m_program->setUniformValue("u_color_tint", m_colorTint);
+            m_program->setUniformValue("u_fractal_type", m_fractalType);
+
+            int expZoomLevel = m_program->uniformLocation("u_zoom_level");
+            int expZoomCenter = m_program->uniformLocation("u_zoom_center");
+            int expJuliaC = m_program->uniformLocation("u_julia_c");
+
+            if (expZoomLevel != -1) {
+                this->glUniform1d(expZoomLevel, m_currentZoom);
+            }
+            if (expZoomCenter != -1) {
+                this->glUniform2d(expZoomCenter, m_currentCenterX, m_currentCenterY);
+            }
+            if (expJuliaC != -1) {
+                this->glUniform2d(expJuliaC, static_cast<double>(m_juliaC.x()), static_cast<double>(m_juliaC.y()));
+            }
+
+            // declare a high res coord array
+            GLfloat highResVertices[] = {
+                -1.0f, -1.0f, 0.0f,
+                1.0f, -1.0f, 0.0f,
+                -1.0f,  1.0f, 0.0f,
+
+                -1.0f,  1.0f, 0.0f,
+                1.0f, -1.0f, 0.0f,
+                1.0f, 1.0f, 0.0f,
+            };
+
+            // re-render full screen geometry over the off-screen canvas target
+            m_program->enableAttributeArray(0);
+            m_program->setAttributeArray(0, GL_FLOAT, highResVertices, 3);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+            m_program->disableAttributeArray(0);
+            m_program->release();
+
+            // pull pixel data from gpu to storage
+            QImage image = exportFbo.toImage();
+            exportFbo.release();
+
+            if (image.save(m_exportFilename)) {
+                qDebug() << "high-res file successfully saved at: " << m_exportFilename;
+            } else {
+                qWarning() << "failed to save the image.";
+            }
+
+            // restore viewport
+            glViewport(0, 0, width, height);
+        }
+    }
 }
 
 // fractalengine implementation
@@ -124,4 +212,12 @@ void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
     this->setFractalType(engine->fractalType());
 
     this->setJuliaC(engine->juliaC());
+
+    if (engine->hasPendingExport()) {
+        this->m_pendingExport = true;
+        this->m_exportFilename = engine->exportFilename();
+        this->m_exportWidth = engine->exportWidth();
+        this->m_exportHeight = engine->exportHeight();
+        engine->clearExportFlag();
+    }
 }

@@ -418,7 +418,7 @@ Window {
 
                 Text {
                     text: "julia constant (c):"
-                    color: "#7d00ff"
+                    color: "#8a90a6"
                     font.pixelSize: 12; font.family: "Monospace"
                 }
 
@@ -455,6 +455,106 @@ Window {
                             selectByMouse: true
                             color: "#ffffff"
                             background: Rectangle { color: "#222222"; radius: 4 }
+                        }
+                    }
+                }
+            }
+
+            // render to file
+            Column {
+                width: parent.width
+                spacing: 8
+
+                Text {
+                    text: "export high-res png:"
+                    color: "#8a90a6"
+                    font.pixelSize: 12
+                    font.family: "Monospace"
+                }
+
+                // w / h
+                Row {
+                    width: parent.width
+                    spacing: 10
+
+                    // width input
+                    Column {
+                        width: (parent.width - 10) / 2
+                        spacing: 3
+                        Text { text: "width (px):"; color: "#aaaaaa"; font.pixelSize: 10 }
+                        TextField {
+                            id: exportWidthInput
+                            width: parent.width
+                            height: 28
+                            text: "3480"
+                            placeholderText: "0"
+                            selectByMouse: true
+                            color: "#ffffff"
+                            font.pixelSize: 12
+                            font.family: "Monospace"
+                            verticalAlignment: TextInput.AlignVCenter
+                            leftPadding: 8
+                            background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+                            validator: IntValidator { bottom: 1; top: 30720 } // cap at 32k
+                        }
+                    }
+
+                    // height input
+                    Column {
+                        width: (parent.width - 10) / 2
+                        spacing: 3
+                        Text { text: "height (px):"; color: "#aaaaaa"; font.pixelSize: 10 }
+                        TextField {
+                            id: exportHeightInput
+                            width: parent.width
+                            height: 28
+                            text: "2160"
+                            selectByMouse: true
+                            color: "#ffffff"
+                            font.pixelSize: 12
+                            font.family: "Monospace"
+                            verticalAlignment: TextInput.AlignVCenter
+                            leftPadding: 8
+                            background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+                            validator: IntValidator { bottom: 1; top: 30720 }
+                        }
+                    }
+                }
+
+                // render button
+                Button {
+                    id: exportButton
+                    text: "render to image file"
+                    width: parent.width
+                    height: 32
+
+                    background: Rectangle {
+                        color: exportButton.hovered ? "#4d0099" : "#2a0055"
+                        border.color: exportButton.hovered ? "#7d00ff" : "#5500aa"
+                        border.width: 1
+                        radius: 6
+                    }
+
+                    contentItem: Text {
+                        text: exportButton.text
+                        color: "#ffffff"
+                        font.pixelSize: 11
+                        font.family: "Monospace"
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    onClicked: {
+                        var w = parseInt(exportWidthInput.text)
+                        var h = parseInt(exportHeightInput.text)
+
+                        if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+                            // create the name using timestamp
+                            var timestamp = Qt.formatDateTime(new Date(), "yyyyMMdd_hhmmss")
+                            var filename = "render_" + timestamp + ".png"
+
+                            engine.renderToFile(filename, w, h)
                         }
                     }
                 }
