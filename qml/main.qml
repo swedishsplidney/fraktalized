@@ -165,6 +165,7 @@ Window {
                             Layout.fillWidth: true
                             spacing: 10
 
+                            // min value
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 3
@@ -189,6 +190,7 @@ Window {
                                 }
                             }
 
+                            // max value
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 3
@@ -229,12 +231,15 @@ Window {
                         property bool shouldShow: (Math.round(maxIterationsSlider.value) > 2500) && !isDismissed
 
                         visible: shouldShow || warnAnimation.running
-                        height: shouldShow ? 60 : 0
+                        Layout. preferredHeight: shouldShow ? 60 : 0
 
                         Behavior on height { NumberAnimation { id: warnAnimation; duration: 150 } }
 
                         Column {
-                            anchors.fill: parent
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            anchors.right: okButton.left
                             anchors.margins: 8
                             spacing: 4
 
@@ -411,6 +416,7 @@ Window {
 
                     Text { text: "export high-res png:"; color: "#8a90a6"; font.pixelSize: 12; font.family: "Monospace" }
 
+                    // width
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 10
@@ -434,6 +440,7 @@ Window {
                             }
                         }
 
+                        // height
                         ColumnLayout {
                             Layout.fillWidth: true; spacing: 3
                             Text { text: "height (px):"; color: "#aaaaaa"; font.pixelSize: 10 }
@@ -455,6 +462,7 @@ Window {
                         }
                     }
 
+                    // render button
                     Button {
                         id: exportButton; text: "render image to file"
                         Layout.fillWidth: true
@@ -493,16 +501,21 @@ Window {
         Button {
             id: resetButton; text: "reset view"
             width: 110; height: 30
-            anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 25
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: 25
             background: Rectangle {
                 color: resetButton.hovered ? "#331155" : "#1a0d26"
                 border.color: resetButton.hovered ? "#7d00ff" : "#443355"
                 border.width: 1; radius: 6
             }
             contentItem: Text {
-                text: resetButton.text; color: resetButton.hovered ? "#ffffff" : "#8a90a6"
-                font.pixelSize: 12; font.family: "Monospace"
-                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                text: resetButton.text
+                color: resetButton.hovered ? "#ffffff" : "#8a90a6"
+                font.pixelSize: 12
+                font.family: "Monospace"
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
             onClicked: {
                 engine.zoomLevel = 2.0
