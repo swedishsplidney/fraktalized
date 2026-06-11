@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import fraktalizedModule
 
 Window {
@@ -15,11 +16,8 @@ Window {
         anchors.fill: parent
 
         maxIterations: Math.round(maxIterationsSlider.value)
-
         colorTint: Qt.vector3d(rSlider.value, gSlider.value, bSlider.value)
-
         fractalType: typeSelector.currentIndex
-
         juliaC: Qt.vector2d(parseFloat(realInput.text), parseFloat(imagInput.text))
 
         // mouse interaction layer
@@ -27,38 +25,29 @@ Window {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton
 
-            // track drag gestures
             property point lastPos: Qt.point(0, 0)
 
             onPressed: (mouse) => {
                 lastPos = Qt.point(mouse.x, mouse.y)
-
                 sidebar.forceActiveFocus()
             }
 
             onPositionChanged: (mouse) => {
                 if (mouse.buttons & Qt.LeftButton) {
-                    // calc pixel differences
                     var dx = mouse.x - lastPos.x
                     var dy = mouse.y - lastPos.y
-
                     engine.panCamera(dx, dy, parent.width, parent.height)
-
                     lastPos = Qt.point(mouse.x, mouse.y)
                 }
             }
 
-            // scroll wheel logic
             onWheel: (wheel) => {
                 var zoomFactor = 1.15
                 if (wheel.angleDelta.y > 0) {
-                    // zoom in
                     engine.zoomLevel /= zoomFactor
                 } else {
-                    // zoom out
                     engine.zoomLevel *= zoomFactor
                 }
-
                 wheel.accepted = true
             }
         }
@@ -77,525 +66,449 @@ Window {
         z: 1
         focus: true
 
-        Column {
+        ScrollView {
+            id: sidebarScroll
             anchors.fill: parent
-            anchors.margins: 25
-            spacing: 20
+            anchors.bottomMargin: 58
+            clip: true
 
-            Text {
-                text: "fraktalized"
-                color: "#7d00ff"
-                font.pixelSize: 18
-                font.bold: true
-                font.family: "Monospace"
-            }
+            leftPadding: 16
+            rightPadding: 16
+            topPadding: 20
+            bottomPadding: 20
 
-            // set changer
-            ComboBox {
-                id: typeSelector
-                width: parent.width
-                model: ["mandelbrot set", "julia set"]
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                // reset zoom on switch
-                onCurrentIndexChanged: {
-                    engine.zoomLevel = 2.0
-                    engine.zoomCenter = Qt.vector2d(currentIndex === 0 ? -0.5 : 0.0, 0.0)
+            ColumnLayout {
+                width: sidebarScroll.availableWidth
+                spacing: 18
+
+                Text {
+                    text: "fraktalized"
+                    color: "#7d00ff"
+                    font.pixelSize: 20
+                    font.bold: true
+                    font.family: "Monospace"
+                    Layout.fillWidth: true
                 }
-            }
 
-            // iteration controls
-            Column {
-                width: parent.width
-                spacing: 6
+                ComboBox {
+                    id: typeSelector
+                    model: ["mandelbrot set", "julia set"]
+                    Layout.fillWidth: true
 
-                // header
-                Row {
-                    width: parent.width
-                    height: 24
+                    onCurrentIndexChanged: {
+                        engine.zoomLevel = 2.0
+                        engine.zoomCenter = Qt.vector2d(currentIndex === 0 ? -0.5 : 0.0, 0.0)
+                    }
+                }
+
+                // iteration controls container
+                ColumnLayout {
                     spacing: 6
+                    Layout.fillWidth: true
 
-                    Text {
-                        text: "iterations / detail"
-                        color: "#8a90a6"
-                        font.pixelSize: 13
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    // menu button
-                    Button {
-                        id: menuButton
-                        width: 24
+                    RowLayout {
+                        Layout.fillWidth: true
                         height: 24
-                        flat: true
-                        checkable: true
+                        spacing: 6
 
-                        background: Item {
-                        } // invis bg
-
-                        contentItem: Text {
-                            text: menuButton.checked ? "∨" : ">"
-                            font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            color: menuButton.hovered ? "#7d00ff" : "#8a90a6"
+                        Text {
+                            text: "iterations / detail"
+                            color: "#8a90a6"
+                            font.pixelSize: 13
+                            Layout.alignment: Qt.AlignVCenter
                         }
-                    }
-                }
 
-                // settings panel
-                Column {
-                    id: iterationsSettings
-                    width: parent.width
-                    spacing: 8
-                    clip: true
+                        Item { Layout.fillWidth: true }
 
-                    visible: menuButton.checked || heightAnimation.running > 0
+                        Button {
+                            id: menuButton
+                            width: 24
+                            height: 24
+                            flat: true
+                            checkable: true
+                            background: Item {}
 
-                    // smooth animation
-                    height: menuButton.checked ? 55 : 0
-
-                    Behavior on height {
-                        NumberAnimation {
-                            id: heightAnimation
-                            duration: 150
+                            contentItem: Text {
+                                text: menuButton.checked ? "∨" : ">"
+                                font.pixelSize: 14
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                color: menuButton.hovered ? "#7d00ff" : "#8a90a6"
+                            }
                         }
                     }
 
-                    Row {
-                        width: parent.width
-                        spacing: 10
+                    // settings container
+                    ColumnLayout {
+                        id: iterationsSettings
+                        Layout.fillWidth: true
+                        spacing: 8
+                        clip: true
 
-                        // min input
-                        Column {
-                            width: (parent.width - 10) / 2
-                            spacing: 3
-                            Text { text: "min value:"; color: "#aaaaaa"; font.pixelSize: 10 }
-                            TextField {
-                                id: minLimitInput
-                                width: parent.width
-                                height: 28
-                                text: "10"
-                                placeholderText: "0"
-                                selectByMouse: true
-                                color: "#ffffff"
-                                font.pixelSize: 12
-                                verticalAlignment: TextInput.AlignVCenter
-                                leftPadding: 8
+                        visible: menuButton.checked || heightAnimation.running
 
-                                background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+                        Layout.preferredHeight: menuButton.checked ? targetHeight : 0
+                        property real targetHeight: 55
 
-                                onTextChanged: {
-                                    var val = parseInt(text)
-                                    if (!isNaN(val) && val >= 0) maxIterationsSlider.from = val
-                                }
+                        Behavior on Layout.preferredHeight {
+                            NumberAnimation {
+                                id: heightAnimation
+                                duration: 150
+                                easing.type: Easing.InOutQuad
                             }
                         }
 
-                        // max input
-                        Column {
-                            width: (parent.width - 10) / 2
-                            spacing: 3
-                            Text { text: "max value:"; color: "#aaaaaa"; font.pixelSize: 10 }
-                            TextField {
-                                id: maxLimitInput
-                                width: parent.width
-                                height: 28
-                                text: "500"
-                                placeholderText: "0"
-                                selectByMouse: true
-                                color: "#ffffff"
-                                font.pixelSize: 12
-                                verticalAlignment: TextInput.AlignVCenter
-                                leftPadding: 8
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 10
 
-                                background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 3
+                                Text { text: "min value:"; color: "#aaaaaa"; font.pixelSize: 10 }
+                                TextField {
+                                    id: minLimitInput
+                                    Layout.fillWidth: true
+                                    height: 28
+                                    text: "10"
+                                    placeholderText: "0"
+                                    placeholderTextColor: "#444444"
+                                    selectByMouse: true
+                                    color: "#ffffff"
+                                    font.pixelSize: 12
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    leftPadding: 8
+                                    background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+                                    onTextChanged: {
+                                        var val = parseInt(text)
+                                        if (!isNaN(val) && val >= 0) maxIterationsSlider.from = val
+                                    }
+                                }
+                            }
 
-                                onTextChanged: {
-                                    var val = parseInt(text)
-                                    if (!isNaN(val)) {
-                                        maxIterationsSlider.to = val
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 3
+                                Text { text: "max value:"; color: "#aaaaaa"; font.pixelSize: 10 }
+                                TextField {
+                                    id: maxLimitInput
+                                    Layout.fillWidth: true
+                                    height: 28
+                                    text: "500"
+                                    placeholderText: "0"
+                                    placeholderTextColor: "#444444"
+                                    selectByMouse: true
+                                    color: "#ffffff"
+                                    font.pixelSize: 12
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    leftPadding: 8
+                                    background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+                                    onTextChanged: {
+                                        var val = parseInt(text)
+                                        if (!isNaN(val)) maxIterationsSlider.to = val
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                // warn box
-                Rectangle {
-                    id: warnBox
-                    width: parent.width
-                    clip: true
-                    color: "#2a0808"
-                    border.color: "#ff3333"
-                    border.width: 1
-                    radius: 6
+                    // warn box
+                    Rectangle {
+                        id: warnBox
+                        Layout.fillWidth: true
+                        clip: true
+                        color: "#2a0808"
+                        border.color: "#ff3333"
+                        border.width: 1
+                        radius: 6
 
-                    property bool isDismissed: false
-                    property bool shouldShow: (Math.round(maxIterationsSlider.value) > 2500) && !isDismissed
+                        property bool isDismissed: false
+                        property bool shouldShow: (Math.round(maxIterationsSlider.value) > 2500) && !isDismissed
 
-                    visible: shouldShow || warnAnimation.running
-                    height: shouldShow ? 60 : 0
+                        visible: shouldShow || warnAnimation.running
+                        height: shouldShow ? 60 : 0
 
-                    Behavior on height { NumberAnimation { id: warnAnimation; duration: 150 } }
+                        Behavior on height { NumberAnimation { id: warnAnimation; duration: 150 } }
 
-                    Column {
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 4
+                        Column {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 4
 
-                        Text {
-                            text: "warning"
-                            color: "#ff3333"
-                            font.pixelSize: 10
-                            font.bold: true
+                            Text { text: "warning"; color: "#ff3333"; font.pixelSize: 10; font.bold: true }
+                            Text {
+                                text: "values over 2500 iterations can cause problems on low-end hardware"
+                                color: "#ffaaaa"; font.pixelSize: 9
+                                wrapMode: Text.Wrap
+                                width: parent.width - 10
+                            }
                         }
-                        Text {
-                            text: "values over 2500 iterations can cause problems on low-end hardware"
-                            color: "#ffaaaa"
-                            font.pixelSize: 9
-                            wrapMode: Text.Wrap
-                            width: parent.width - 10
+
+                        Button {
+                            id: okButton
+                            width: 36; height: 20
+                            anchors.bottom: parent.bottom
+                            anchors.right: parent.right
+                            anchors.margins: 6
+                            background: Rectangle {
+                                color: okButton.hovered ? "#ff3333" : "#4a1212"
+                                radius: 4; border.color: "#ff3333"; border.width: 1
+                            }
+                            contentItem: Text {
+                                text: "ok"; color: okButton.hovered ? "#2a0808" : "#ff3333"
+                                font.pixelSize: 10; font.bold: true
+                                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                            }
+                            onClicked: warnBox.isDismissed = true
                         }
                     }
 
-                    // dismiss button
+                    // slider section
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+
+                        Slider {
+                            id: maxIterationsSlider
+                            Layout.fillWidth: true
+                            from: 10; to: 500; value: 100
+                            onPressedChanged: if (pressed) forceActiveFocus()
+                        }
+
+                        TextField {
+                            id: currentValueInput
+                            Layout.fillWidth: true
+                            height: 24
+                            leftPadding: 6
+                            color: activeFocus ? "#ffffff" : "#8a90a6"
+                            font.pixelSize: 10
+                            font.family: "Monospace"
+                            selectByMouse: true
+                            verticalAlignment: TextInput.AlignVCenter
+
+                            property bool isOutOfBounds: false
+
+                            Binding on text {
+                                when: !currentValueInput.activeFocus && !currentValueInput.isOutOfBounds
+                                value: "current: " + Math.round(maxIterationsSlider.value)
+                            }
+
+                            validator: IntValidator { bottom: 0; top: 2147483647 }
+
+                            background: Rectangle {
+                                color: parent.activeFocus ? "#221133" : "transparent"
+                                border.color: parent.activeFocus ? "#7d00ff" : "transparent"
+                                border.width: 1; radius: 4
+                            }
+
+                            Timer {
+                                id: resetTimer; interval: 1200
+                                onTriggered: currentValueInput.isOutOfBounds = false
+                            }
+
+                            onEditingFinished: {
+                                var val = parseInt(text)
+                                if (!isNaN(val)) {
+                                    if ((val > maxIterationsSlider.to) || (val < maxIterationsSlider.from)) {
+                                        currentValueInput.isOutOfBounds = true
+                                        currentValueInput.text = "outside of currently set range"
+                                        resetTimer.restart()
+                                    }
+                                    val = Math.max(maxIterationsSlider.from, Math.min(val, maxIterationsSlider.to))
+                                    maxIterationsSlider.value = val
+                                }
+                                deselect(); focus = false
+                                rootWindow.contentItem.focus = true
+                                rootWindow.contentItem.forceActiveFocus()
+                            }
+
+                            onActiveFocusChanged: {
+                                if (activeFocus) {
+                                    resetTimer.stop()
+                                    currentValueInput.isOutOfBounds = false
+                                    text = Math.round(maxIterationsSlider.value).toString()
+                                    selectAll()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // color controls
+                Text { text: "color setup:"; color: "#8a90a6"; font.pixelSize: 13; Layout.fillWidth: true }
+
+                ColumnLayout {
+                    spacing: 5
+                    Layout.fillWidth: true
+                    Text { text: "red:"; color: "#ff5555"; font.pixelSize: 11 }
+                    Slider { id: rSlider; Layout.fillWidth: true; from: 0.0; to: 2.0; value: 0.2 }
+                }
+
+                ColumnLayout {
+                    spacing: 5
+                    Layout.fillWidth: true
+                    Text { text: "green:"; color: "#55ff55"; font.pixelSize: 11 }
+                    Slider { id: gSlider; Layout.fillWidth: true; from: 0.0; to: 2.0; value: 0.2 }
+                }
+
+                ColumnLayout {
+                    spacing: 5
+                    Layout.fillWidth: true
+                    Text { text: "blue:"; color: "#5555ff"; font.pixelSize: 11 }
+                    Slider { id: bSlider; Layout.fillWidth: true; from: 0.0; to: 2.0; value: 0.2 }
+                }
+
+                // julia constant
+                ColumnLayout {
+                    spacing: 8
+                    Layout.fillWidth: true
+                    visible: typeSelector.currentIndex === 1
+
+                    Text { text: "julia constant (c):"; color: "#8a90a6"; font.pixelSize: 12; font.family: "Monospace" }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+                        ColumnLayout {
+                            Layout.fillWidth: true; spacing: 3
+                            Text { text: "real (x):"; color: "#aaaaaa"; font.pixelSize: 10 }
+                            TextField {
+                                id: realInput
+                                Layout.fillWidth: true
+                                text: "-0.7"
+                                placeholderText: "0.0"
+                                placeholderTextColor: "#444444"
+                                selectByMouse: true
+                                color: "#ffffff"
+                                background: Rectangle { color: "#222222"; radius: 4 }
+                            }
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 3
+                            Text { text: "imag (y):"; color: "#aaaaaa"; font.pixelSize: 10 }
+                            TextField {
+                                id: imagInput
+                                Layout.fillWidth: true
+                                text: "0.27015"
+                                placeholderText: "0.0"
+                                placeholderTextColor: "#444444"
+                                selectByMouse: true
+                                color: "#ffffff"
+                                background: Rectangle { color: "#222222"; radius: 4 }
+                            }
+                        }
+                    }
+                }
+
+                // export panel
+                ColumnLayout {
+                    spacing: 8
+                    Layout.fillWidth: true
+
+                    Text { text: "export high-res png:"; color: "#8a90a6"; font.pixelSize: 12; font.family: "Monospace" }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 3
+                            Text { text: "width (px):"; color: "#aaaaaa"; font.pixelSize: 10 }
+                            TextField {
+                                id: exportWidthInput
+                                Layout.fillWidth: true
+                                height: 28
+                                text: "3480"
+                                placeholderText: "3480"
+                                placeholderTextColor: "#444444"
+                                selectByMouse: true; color: "#ffffff"
+                                font.pixelSize: 12
+                                font.family: "Monospace"
+                                leftPadding: 8
+                                background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+                                validator: IntValidator { bottom: 1; top: 30720 }
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true; spacing: 3
+                            Text { text: "height (px):"; color: "#aaaaaa"; font.pixelSize: 10 }
+                            TextField {
+                                id: exportHeightInput
+                                Layout.fillWidth: true
+                                height: 28
+                                text: "2160"
+                                placeholderText: "2160"
+                                placeholderTextColor: "#444444"
+                                selectByMouse: true
+                                color: "#ffffff"
+                                font.pixelSize: 12
+                                font.family: "Monospace"
+                                leftPadding: 8
+                                background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
+                                validator: IntValidator { bottom: 1; top: 30720 }
+                            }
+                        }
+                    }
+
                     Button {
-                        id: okButton
-                        width: 36
-                        height: 20
-                        anchors.bottom: parent.bottom
-                        anchors.right: parent.right
-                        anchors.margins: 6
-
+                        id: exportButton; text: "render image to file"
+                        Layout.fillWidth: true
+                        height: 32
                         background: Rectangle {
-                            color: okButton.hovered ? "#ff3333" : "#4a1212"
-                            radius: 4
-                            border.color: "#ff3333"
+                            color: exportButton.hovered ? "#4d0099" : "#2a0055"
+                            border.color: exportButton.hovered ? "#7d00ff" : "#5500aa"
                             border.width: 1
-
-                            Behavior on color { ColorAnimation { duration: 100 } }
+                            radius: 6
                         }
 
                         contentItem: Text {
-                            text: "ok"
-                            color: okButton.hovered ? "#2a0808" : "#ff3333"
-                            font.pixelSize: 10
+                            text: exportButton.text
+                            color: "#ffffff"
+                            font.pixelSize: 11
+                            font.family: "Monospace"
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
 
                         onClicked: {
-                            warnBox.isDismissed = true
-                        }
-                    }
-                }
-
-                Column {
-                    width: parent.width
-                    spacing: 1
-
-                    // slider
-                    Slider {
-                        id: maxIterationsSlider
-                        width: parent.width
-                        from: 10
-                        to: 500
-                        value: 100
-
-                        onPressedChanged: if (pressed) forceActiveFocus()
-                    }
-
-                    // display current value and have a clickable box
-                    TextField {
-                        id: currentValueInput
-                        width: contentWidth + 12
-                        height: contentHeight + 4
-                        topPadding: 2
-                        bottomPadding: 2
-                        leftPadding: 6
-                        rightPadding: 6
-                        color: activeFocus ? "#ffffff" : "#8a90a6"
-                        font.pixelSize: 10
-                        font.family: "Monospace"
-                        selectByMouse: true
-                        verticalAlignment: TextInput.AlignVCenter
-
-                        property bool isOutOfBounds: false
-
-                        Binding on text {
-                            when: !currentValueInput.activeFocus && !currentValueInput.isOutOfBounds
-                            value: "current: " + Math.round(maxIterationsSlider.value)
-                        }
-
-                        // numbers only
-                        validator: IntValidator {
-                            bottom: 0
-                            top: 2147483647
-                        }
-
-                        background: Rectangle {
-                            color: parent.activeFocus ? "#221133" : "transparent"
-                            border.color: parent.activeFocus ? "#7d00ff" : "transparent"
-                            border.width: 1
-                            radius: 4
-                        }
-
-                        Timer {
-                            id: resetTimer
-                            interval: 1200
-                            onTriggered: {
-                                currentValueInput.isOutOfBounds = false
+                            var w = parseInt(exportWidthInput.text)
+                            var h = parseInt(exportHeightInput.text)
+                            if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+                                var timestamp = Qt.formatDateTime(new Date(), "yyyyMMdd_hhmmss")
+                                engine.renderToFile("render_" + timestamp + ".png", w, h)
                             }
-                        }
-
-                        onEditingFinished: {
-                            var val = parseInt(text)
-                            if (!isNaN(val)) {
-                                // make sure its within the set range
-                                if ((val > maxIterationsSlider.to) || (val < maxIterationsSlider.from)) {
-                                    currentValueInput.isOutOfBounds = true
-                                    currentValueInput.text = "outside of currently set range"
-                                    resetTimer.restart()
-                                }
-
-                                val = Math.max(maxIterationsSlider.from, Math.min(val, maxIterationsSlider.to))
-                                maxIterationsSlider.value = val
-                            }
-                            deselect()
-                            focus = false
-                            rootWindow.contentItem.focus = true
-                            rootWindow.contentItem.forceActiveFocus()
-                        }
-
-                        onActiveFocusChanged: {
-                            if (activeFocus) {
-                                resetTimer.stop()
-                                currentValueInput.isOutOfBounds = false
-                                text = Math.round(maxIterationsSlider.value).toString()
-                                selectAll()
-                            }
-                        }
-                    }
-                }
-            }
-
-            // color controls
-            Text {
-                text: "color setup:"
-                color: "#8a90a6"
-                font.pixelSize: 13
-            }
-
-            Column {
-                width: parent.width
-                spacing: 5
-                Text { text: "red:"; color: "#ff5555"; font.pixelSize: 11 }
-                Slider { id: rSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2; onPressedChanged: if (pressed) forceActiveFocus() }
-            }
-
-            Column {
-                width: parent.width
-                spacing: 5
-                Text { text: "green:"; color: "#55ff55"; font.pixelSize: 11 }
-                Slider { id: gSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2; onPressedChanged: if (pressed) forceActiveFocus() }
-            }
-
-            Column {
-                width: parent.width
-                spacing: 5
-                Text { text: "blue:"; color: "#5555ff"; font.pixelSize: 11 }
-                Slider { id: bSlider; width: parent.width; from: 0.0; to: 2.0; value: 0.2; onPressedChanged: if (pressed) forceActiveFocus() }
-            }
-
-            // julia set constant value setter
-            Column {
-                width: parent.width
-                spacing: 8
-                // only show when julia set
-                visible: typeSelector.currentIndex === 1
-
-                Text {
-                    text: "julia constant (c):"
-                    color: "#8a90a6"
-                    font.pixelSize: 12; font.family: "Monospace"
-                }
-
-                Row {
-                    width: parent.width
-                    spacing: 10
-
-                    // real value
-                    Column {
-                        width: (parent.width - 10) / 2
-                        spacing: 3
-                        Text { text: "real (x):"; color: "#aaaaaa"; font.pixelSize: 10 }
-                        TextField {
-                            id: realInput
-                            width: parent.width
-                            text: "-0.7"
-                            placeholderText: "0.0"
-                            selectByMouse: true
-                            color: "#ffffff"
-                            background: Rectangle { color: "#222222"; radius: 4}
-                        }
-                    }
-
-                    // imaginary value
-                    Column {
-                        width: (parent.width - 10) / 2
-                        spacing: 3
-                        Text { text: "imag (y):"; color: "#aaaaaa"; font.pixelSize: 10 }
-                        TextField {
-                            id: imagInput
-                            width: parent.width
-                            text: "0.27015"
-                            placeholderText: "0.0"
-                            selectByMouse: true
-                            color: "#ffffff"
-                            background: Rectangle { color: "#222222"; radius: 4 }
-                        }
-                    }
-                }
-            }
-
-            // render to file
-            Column {
-                width: parent.width
-                spacing: 8
-
-                Text {
-                    text: "export high-res png:"
-                    color: "#8a90a6"
-                    font.pixelSize: 12
-                    font.family: "Monospace"
-                }
-
-                // w / h
-                Row {
-                    width: parent.width
-                    spacing: 10
-
-                    // width input
-                    Column {
-                        width: (parent.width - 10) / 2
-                        spacing: 3
-                        Text { text: "width (px):"; color: "#aaaaaa"; font.pixelSize: 10 }
-                        TextField {
-                            id: exportWidthInput
-                            width: parent.width
-                            height: 28
-                            text: "3480"
-                            placeholderText: "0"
-                            selectByMouse: true
-                            color: "#ffffff"
-                            font.pixelSize: 12
-                            font.family: "Monospace"
-                            verticalAlignment: TextInput.AlignVCenter
-                            leftPadding: 8
-                            background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
-                            validator: IntValidator { bottom: 1; top: 30720 } // cap at 32k
-                        }
-                    }
-
-                    // height input
-                    Column {
-                        width: (parent.width - 10) / 2
-                        spacing: 3
-                        Text { text: "height (px):"; color: "#aaaaaa"; font.pixelSize: 10 }
-                        TextField {
-                            id: exportHeightInput
-                            width: parent.width
-                            height: 28
-                            text: "2160"
-                            selectByMouse: true
-                            color: "#ffffff"
-                            font.pixelSize: 12
-                            font.family: "Monospace"
-                            verticalAlignment: TextInput.AlignVCenter
-                            leftPadding: 8
-                            background: Rectangle { color: "#222222"; radius: 4; border.color: "#444444" }
-                            validator: IntValidator { bottom: 1; top: 30720 }
-                        }
-                    }
-                }
-
-                // render button
-                Button {
-                    id: exportButton
-                    text: "render to image file"
-                    width: parent.width
-                    height: 32
-
-                    background: Rectangle {
-                        color: exportButton.hovered ? "#4d0099" : "#2a0055"
-                        border.color: exportButton.hovered ? "#7d00ff" : "#5500aa"
-                        border.width: 1
-                        radius: 6
-                    }
-
-                    contentItem: Text {
-                        text: exportButton.text
-                        color: "#ffffff"
-                        font.pixelSize: 11
-                        font.family: "Monospace"
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
-                    onClicked: {
-                        var w = parseInt(exportWidthInput.text)
-                        var h = parseInt(exportHeightInput.text)
-
-                        if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
-                            // create the name using timestamp
-                            var timestamp = Qt.formatDateTime(new Date(), "yyyyMMdd_hhmmss")
-                            var filename = "render_" + timestamp + ".png"
-
-                            engine.renderToFile(filename, w, h)
                         }
                     }
                 }
             }
         }
 
-        // reset button
+        // reset view button (anchored to sidebar bottom layout)
         Button {
-            id: resetButton
-            text: "reset view"
-            width: 110
-            height: 30
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: 25
-
+            id: resetButton; text: "reset view"
+            width: 110; height: 30
+            anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 25
             background: Rectangle {
                 color: resetButton.hovered ? "#331155" : "#1a0d26"
                 border.color: resetButton.hovered ? "#7d00ff" : "#443355"
-                border.width: 1
-                radius: 6
+                border.width: 1; radius: 6
             }
-
             contentItem: Text {
-                text: resetButton.text
-                color: resetButton.hovered ? "#ffffff" : "#8a90a6"
-                font.pixelSize: 12
-                font.family: "Monospace"
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+                text: resetButton.text; color: resetButton.hovered ? "#ffffff" : "#8a90a6"
+                font.pixelSize: 12; font.family: "Monospace"
+                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
             }
-
             onClicked: {
                 engine.zoomLevel = 2.0
-                if (typeSelector.currentIndex === 0) {
-                    engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
-                } else if (typeSelector.currentIndex === 1) {
-                    engine.zoomCenter = Qt.vector2d(0.0, 0.0)
-                }
+                engine.zoomCenter = Qt.vector2d(typeSelector.currentIndex === 0 ? -0.5 : 0.0, 0.0)
                 maxIterationsSlider.value = 100
-            sidebar.forceActiveFocus()
+                sidebar.forceActiveFocus()
             }
         }
     }
