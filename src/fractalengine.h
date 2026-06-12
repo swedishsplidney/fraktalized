@@ -69,7 +69,7 @@ class FractalEngine : public QQuickFramebufferObject {
     Q_PROPERTY(int maxIterations READ maxIterations WRITE setMaxIterations NOTIFY maxIterationsChanged)
     Q_PROPERTY(QVector3D colorTint READ colorTint WRITE setColorTint NOTIFY colorTintChanged)
 
-    Q_PROPERTY(float zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomLevelChanged)
+    Q_PROPERTY(double zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomLevelChanged)
     Q_PROPERTY(QVector2D zoomCenter READ zoomCenter WRITE setZoomCenter NOTIFY zoomCenterChanged)
 
     Q_PROPERTY(int fractalType READ fractalType WRITE setFractalType NOTIFY fractalTypeChanged)
@@ -77,6 +77,11 @@ class FractalEngine : public QQuickFramebufferObject {
 
     Q_PROPERTY(int aaSamples READ aaSamples WRITE setAaSamples NOTIFY aaSamplesChanged)
     Q_PROPERTY(float viewportScale READ viewportScale WRITE setViewportScale NOTIFY viewportScaleChanged)
+
+    Q_PROPERTY(double currentMinX READ currentMinX NOTIFY boundsChanged)
+    Q_PROPERTY(double currentMaxX READ currentMaxX NOTIFY boundsChanged)
+    Q_PROPERTY(double currentMinY READ currentMinY NOTIFY boundsChanged)
+    Q_PROPERTY(double currentMaxY READ currentMaxY NOTIFY boundsChanged)
 
 public:
     FractalEngine();
@@ -188,6 +193,13 @@ public:
 
     void clearExportFlag() { m_pendingExport = false; }
 
+    double currentMinX() const { return m_minX; }
+    double currentMaxX() const { return m_maxX; }
+    double currentMinY() const { return m_minY; }
+    double currentMaxY() const { return m_maxY; }
+
+    void updateComputedBoundsDirect(double w, double h);
+
 signals:
     void maxIterationsChanged();
     void colorTintChanged();
@@ -197,6 +209,7 @@ signals:
     void juliaCChanged();
     void aaSamplesChanged();
     void viewportScaleChanged();
+    void boundsChanged();
 
 private:
     int m_maxIterations = 100;
@@ -217,6 +230,13 @@ private:
 
     int m_aaSamples = 1;
     float m_viewportScale = 1.0f;
+
+    void updateComputedBounds();
+
+    double m_minX = -2.5;
+    double m_maxX = 1.5;
+    double m_minY = -1.5;
+    double m_maxY = 1.5;
 };
 
 #endif

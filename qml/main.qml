@@ -25,10 +25,14 @@ Window {
 
         // mouse interaction layer
         MouseArea {
+            id: internalMouseArea
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton
+            hoverEnabled: true
 
             property point lastPos: Qt.point(0, 0)
+            property real cursorX: 0.0
+            property real cursorY: 0.0
 
             onPressed: (mouse) => {
                 lastPos = Qt.point(mouse.x, mouse.y)
@@ -36,6 +40,29 @@ Window {
             }
 
             onPositionChanged: (mouse) => {
+                if (width <= 0 || height <= 0) return;
+
+                let pctX = mouse.x / width
+                let pctY = mouse.y / height
+
+                let screenAspect = width / height
+                let scaleX = 1.0
+                let scaleY = 1.0
+
+                if (width >= height) {
+                    scaleX = 1.0
+                    scaleY = 1.0 / screenAspect
+                } else {
+                    scaleX = screenAspect
+                    scaleY = 1.0
+                }
+
+                let currentX = engine.zoomCenter.x + (pctX * 2.0 - 1.0) * (scaleX * engine.zoomLevel)
+                let currentY = engine.zoomCenter.y + (pctY * 2.0 - 1.0) * (scaleY * engine.zoomLevel)
+
+                cursorX = currentX
+                cursorY = currentY
+
                 if (mouse.buttons & Qt.LeftButton) {
                     var dx = mouse.x - lastPos.x
                     var dy = mouse.y - lastPos.y
@@ -431,7 +458,7 @@ Window {
                                 id: exportWidthInput
                                 Layout.fillWidth: true
                                 height: 28
-                                text: "3480"
+                                text: "3840"
                                 placeholderText: "3480"
                                 placeholderTextColor: "#444444"
                                 selectByMouse: true; color: "#ffffff"
@@ -592,6 +619,56 @@ Window {
                     id: aaSelector
                     model: ["off (1x)", "low ssaa (2x)", "high ssaa (3x)"]
                     currentIndex: 0
+                    Layout.fillWidth: true
+                }
+            }
+        }
+    }
+
+    // coord panel
+    Rectangle {
+        id: coordPanel
+        width: 220
+        height: 42
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 20
+        color: "#d00d0e15"
+        radius: 12
+        z: 1
+
+        ColumnLayout {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.margins: 10
+            spacing: 4
+
+            // center coord
+            RowLayout {
+                Layout.fillWidth: true
+
+                Text { text: "ctr "; color: "#8a90a6"; font.pixelSize: 10; font.bold: true; font.family: "Monospace" }
+
+                Text {
+                    text: "x: " + engine.zoomCenter.x.toFixed(6) + " | y: " + engine.zoomCenter.y.toFixed(6)
+                    color: "#aaaaaa"
+                    font.pixelSize: 10
+                    font.family: "Monospace"
+                    Layout.fillWidth: true
+                }
+            }
+
+            // cursor coord
+            RowLayout {
+                Layout.fillWidth: true
+
+                Text { text: "cur "; color: "#8a90a6"; font.pixelSize: 10; font.bold: true; font.family: "Monospace"}
+
+                Text {
+                    text: "x: " + internalMouseArea.cursorX.toFixed(6) + " | y: " + internalMouseArea.cursorY.toFixed(6)
+                    color: "#aaaaaa"
+                    font.pixelSize: 10
+                    font.family: "Monospace"
                     Layout.fillWidth: true
                 }
             }

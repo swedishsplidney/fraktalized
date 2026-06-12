@@ -305,6 +305,8 @@ void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
         this->invalidateFramebufferObject();
     }
 
+    engine->updateComputedBoundsDirect(newScaledSize.width(), newScaledSize.height());
+
     if (engine->hasPendingExport()) {
         this->m_pendingExport = true;
         this->m_exportFilename = engine->exportFilename();
@@ -312,4 +314,32 @@ void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
         this->m_exportHeight = engine->exportHeight();
         engine->clearExportFlag();
     }
+}
+
+// compute coordinate space
+void FractalEngine::updateComputedBoundsDirect(double w, double h) {
+    if (w <= 0 || h <= 0) return;
+
+    double screenAspect = w / h;
+    double scaleX = 1.0;
+    double scaleY = 1.0;
+
+    if (w >= h) {
+        scaleX = 1.0;
+        scaleY = 1.0 / screenAspect;
+    } else {
+        scaleX = screenAspect;
+        scaleY = 1.0;
+    }
+
+    m_minX = m_zoomCenterX - (scaleX * m_zoomLevel);
+    m_maxX = m_zoomCenterX + (scaleX * m_zoomLevel);
+    m_minY = m_zoomCenterY - (scaleY * m_zoomLevel);
+    m_maxY = m_zoomCenterY + (scaleY * m_zoomLevel);
+
+    emit boundsChanged();
+}
+
+void FractalEngine::updateComputedBounds() {
+    updateComputedBoundsDirect(this->width(), this->height());
 }
