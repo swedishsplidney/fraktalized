@@ -570,7 +570,7 @@ Window {
                     id: resSlider
                     Layout.fillWidth: true
                     from: 0.25
-                    to: 2.0
+                    to: 1.5
                     value: 1.0
                     onPressedChanged: if (pressed) sidebar.forceActiveFocus()
                 }
