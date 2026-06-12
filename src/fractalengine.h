@@ -56,6 +56,9 @@ private:
     int m_exportWidth = 0;
     int m_exportHeight = 0;
 
+    int m_aaSamples = 1;
+    QSize m_scaledSize;
+
     void init();
 };
 
@@ -72,10 +75,31 @@ class FractalEngine : public QQuickFramebufferObject {
     Q_PROPERTY(int fractalType READ fractalType WRITE setFractalType NOTIFY fractalTypeChanged)
     Q_PROPERTY(QVector2D juliaC READ juliaC WRITE setJuliaC NOTIFY juliaCChanged)
 
+    Q_PROPERTY(int aaSamples READ aaSamples WRITE setAaSamples NOTIFY aaSamplesChanged)
+    Q_PROPERTY(float viewportScale READ viewportScale WRITE setViewportScale NOTIFY viewportScaleChanged)
+
 public:
     FractalEngine();
 
     Renderer *createRenderer() const override;
+
+    int aaSamples() const { return m_aaSamples; }
+    void setAaSamples(int samples) {
+        if (m_aaSamples != samples) {
+            m_aaSamples = samples;
+            emit aaSamplesChanged();
+            update();
+        }
+    }
+
+    float viewportScale() const { return m_viewportScale; }
+    void setViewportScale(float scale) {
+        if (m_viewportScale != scale) {
+            m_viewportScale = scale;
+            emit viewportScaleChanged();
+            update();
+        }
+    }
 
     // fractal type getter / setter
     int fractalType() const { return m_fractalType; }
@@ -171,6 +195,8 @@ signals:
     void zoomCenterChanged();
     void fractalTypeChanged();
     void juliaCChanged();
+    void aaSamplesChanged();
+    void viewportScaleChanged();
 
 private:
     int m_maxIterations = 100;
@@ -188,6 +214,9 @@ private:
     QString m_exportFilename;
     int m_exportWidth = 0;
     int m_exportHeight = 0;
+
+    int m_aaSamples = 1;
+    float m_viewportScale = 1.0f;
 };
 
 #endif

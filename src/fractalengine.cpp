@@ -2,6 +2,7 @@
 #include <iostream>
 #include <QOpenGLFramebufferObject>
 #include <QPainter>
+#include <QQuickWindow>
 
 FractalFBORenderer::FractalFBORenderer() {
     // constructor runs safely on the dedicated graphics render thread context loop
@@ -30,10 +31,16 @@ void FractalFBORenderer::init() {
 }
 
 QOpenGLFramebufferObject *FractalFBORenderer::createFramebufferObject(const QSize &size) {
-    // let qt allocate a color-managed texture surface box automatically
+    // scale fbo storage
     QOpenGLFramebufferObjectFormat format;
     format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
-    return new QOpenGLFramebufferObject(size, format);
+
+    QSize targetSize = m_scaledSize;
+    if (targetSize.isEmpty()) {
+        targetSize = size;
+    }
+
+    return new QOpenGLFramebufferObject(targetSize, format);
 }
 
 void FractalFBORenderer::render() {
@@ -67,6 +74,8 @@ void FractalFBORenderer::render() {
 
     // isolate state adjustments
     glViewport(0, 0, width, height);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     glDisable(GL_BLEND);
@@ -93,6 +102,8 @@ void FractalFBORenderer::render() {
     m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
     m_program->setUniformValue("u_color_tint", m_colorTint);
     m_program->setUniformValue("u_fractal_type", m_fractalType);
+
+    m_program->setUniformValue("u_aaSamples", m_aaSamples);
 
     int locZoomLevel = m_program->uniformLocation("u_zoom_level");
     int locZoomCenter = m_program->uniformLocation("u_zoom_center");
@@ -158,6 +169,8 @@ void FractalFBORenderer::render() {
 
             // the shader needs the total image resolution
             m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
+
+            QPainter painter(&masterImage);
 
             // loop through the image grid one tile at a time
             for (int y = 0; y < m_exportHeight; y += tileSize) {
@@ -231,16 +244,16 @@ void FractalFBORenderer::render() {
                     QImage tileImage = tileFbo.toImage().copy(0, openGLYSource, currentTileWidth, currentTileHeight);
 
                     // mirror vertically
-                    tileImage = tileImage.mirrored(false, true);
+                    tileImage = tileImage.flipped(Qt::Vertical);
 
                     int canvasYDestination = m_exportHeight - y - currentTileHeight;
 
                     // stitch tile into master image
-                    QPainter painter(&masterImage);
                     painter.drawImage(x, canvasYDestination, tileImage);
-                    painter.end();
                 }
             }
+
+            painter.end();
 
             m_program->release();
             tileFbo.release();
@@ -260,7 +273,7 @@ void FractalFBORenderer::render() {
 
 // fractalengine implementation
 
-FractalEngine::FractalEngine() {
+FractalEngine::FractalEngine() : m_viewportScale(1.0f) {
     // class construction properties managed implicitly by the framework
 }
 
@@ -279,6 +292,18 @@ void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
     this->setFractalType(engine->fractalType());
 
     this->setJuliaC(engine->juliaC());
+
+    this->m_aaSamples = engine->aaSamples();
+
+    // calc scaled viewport size
+    QSize baseSize = engine->window() ? engine->window()->size() : QSize(1920, 1080);
+    QSize newScaledSize = QSize(baseSize.width() * engine->viewportScale(), baseSize.height() * engine->viewportScale());
+
+    if (this->m_scaledSize != newScaledSize) {
+        this->m_scaledSize = newScaledSize;
+
+        this->invalidateFramebufferObject();
+    }
 
     if (engine->hasPendingExport()) {
         this->m_pendingExport = true;

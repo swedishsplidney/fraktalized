@@ -16,6 +16,8 @@ uniform dvec2 u_julia_c;     // constant point
 
 uniform vec4 u_tile_bounds;
 
+uniform int u_aaSamples;
+
 // anti aliasing color calc
 vec3 evaluateFractal(vec2 custom_v_coord) {
     // normalize aspect ratio
@@ -71,9 +73,8 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
 
 void main() {
     // anti aliasing mode: 1 = none, 2 = 2x ssaa, 3 = 3x ssaa
-    int AA_SAMPLES = 2;
 
-    if (AA_SAMPLES <= 1) {
+    if (u_aaSamples <= 1) {
         // no aa
         FragColor = vec4(evaluateFractal(v_coord), 1.0);
     } else {
@@ -83,12 +84,12 @@ void main() {
         vec2 pixelSize = vec2(2.0) / u_resolution;
 
         // loop through subpixel grid
-        for (int y = 0; y < AA_SAMPLES; y++) {
-            for (int x = 0; x < AA_SAMPLES; x++) {
+        for (int y = 0; y < u_aaSamples; y++) {
+            for (int x = 0; x < u_aaSamples; x++) {
                 // calc fractional offsets within the pixel
                 vec2 offset = vec2(
-                    (float(x) + 0.5) / float(AA_SAMPLES) - 0.5,
-                    (float(y) + 0.5) / float(AA_SAMPLES) - 0.5
+                    (float(x) + 0.5) / float(u_aaSamples) - 0.5,
+                    (float(y) + 0.5) / float(u_aaSamples) - 0.5
                 );
 
                 // shift vertex input coord
@@ -98,7 +99,7 @@ void main() {
         }
 
         // average out the samples
-        vec3 finalColor = accumulatedColor / float(AA_SAMPLES * AA_SAMPLES);
+        vec3 finalColor = accumulatedColor / float(u_aaSamples * u_aaSamples);
         FragColor = vec4(finalColor, 1.0);
     }
 }

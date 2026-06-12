@@ -20,6 +20,9 @@ Window {
         fractalType: typeSelector.currentIndex
         juliaC: Qt.vector2d(parseFloat(realInput.text), parseFloat(imagInput.text))
 
+        viewportScale: resSlider.value
+        aaSamples: aaSelector.currentIndex + 1
+
         // mouse interaction layer
         MouseArea {
             anchors.fill: parent
@@ -522,6 +525,75 @@ Window {
                 engine.zoomCenter = Qt.vector2d(typeSelector.currentIndex === 0 ? -0.5 : 0.0, 0.0)
                 maxIterationsSlider.value = 100
                 sidebar.forceActiveFocus()
+            }
+        }
+    }
+
+    // settings panel
+    Rectangle {
+        id: settingsPanel
+        width: 260
+        height: 155
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 20
+        color: "#d00d0e15"
+        radius: 12
+        z: 1
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 14
+            spacing: 12
+
+            Text {
+                text: "performance settings:"
+                color: "#7d00ff"
+                font.pixelSize: 14
+                font.bold: true
+                font.family: "Monospace"
+                Layout.fillWidth: true
+            }
+
+            // viewport res controls
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+
+                Text {
+                    text: "viewport resolution: " + Math.round(resSlider.value * 100) + "%"
+                    color: "#8a90a6"
+                    font.pixelSize: 11
+                }
+
+                Slider {
+                    id: resSlider
+                    Layout.fillWidth: true
+                    from: 0.25
+                    to: 2.0
+                    value: 1.0
+                    onPressedChanged: if (pressed) sidebar.forceActiveFocus()
+                }
+            }
+
+            // anti aliasing dropdown
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Text {
+                    text: "anti-aliasing"
+                    color: "#8a90a6"
+                    font.pixelSize: 11
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                ComboBox {
+                    id: aaSelector
+                    model: ["off (1x)", "low ssaa (2x)", "high ssaa (3x)"]
+                    currentIndex: 0
+                    Layout.fillWidth: true
+                }
             }
         }
     }
