@@ -32,11 +32,17 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
 
     // set constant based on fractal type
     if (u_fractal_type == 0) {
+        // mandelbrot
         z = dvec2(0.0, 0.0);
         c = coord;
     } else if (u_fractal_type == 1) {
+        // julia
         z = coord;
         c = u_julia_c;
+    } else if (u_fractal_type == 2) {
+        // burning ship
+        z = dvec2(0.0, 0.0);
+        c = coord;
     }
 
     float iter = u_max_iter;
@@ -45,8 +51,20 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
     for (int i = 0; i < 2147483647; i++) {
         if (float(i) >= u_max_iter) break;
 
-        double x_next = z.x * z.x - z.y * z.y + c.x;
-        double y_next = 2.0 * z.x * z.y + c.y;
+        double x_next;
+        double y_next;
+
+        if (u_fractal_type <= 1) {
+            // mandelbrot / julia
+            x_next = z.x * z.x - z.y * z.y + c.x;
+            y_next = 2.0 * z.x * z.y + c.y;
+        } else if (u_fractal_type == 2) {
+            // burning ship
+            dvec2 absZ = abs(z);
+            x_next = absZ.x * absZ.x - absZ.y * absZ.y + c.x;
+            y_next = 2.0 * absZ.x * absZ.y + c.y;
+        }
+
         z = dvec2(x_next, y_next);
 
         if (dot (z, z) > 4.0) {
