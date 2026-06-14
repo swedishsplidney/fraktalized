@@ -548,6 +548,7 @@ void FractalEngine::deletePreset(const QString &name) {
     // remove the preset
     if (masterRoot.contains(name)) {
         masterRoot.remove(name);
+        std::cout << "removed preset: " << name.toStdString()<< ", at: " << filePath.toStdString() << std::endl;
     } else {
         return;
     }
