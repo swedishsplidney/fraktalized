@@ -25,7 +25,11 @@ public:
     void synchronize(QQuickFramebufferObject *item) override;
 
     void setMaxIterations(int iterations) {m_maxIterations = iterations; }
-    void setColorTint(const QVector3D &tint) { m_colorTint = tint; }
+
+    void setGradientData(const QList<QVector3D> &colors, const QList<float> &stops) {
+        m_gradientColors = colors;
+        m_gradientStops = stops;
+    }
 
     void setTargetZoom(double zoom) {m_targetZoom = zoom; }
     void setTargetCenter(double x, double y) { m_targetCenterX = x; m_targetCenterY = y; }
@@ -38,7 +42,12 @@ private:
     bool m_initialized = false;
     QOpenGLShaderProgram *m_program = nullptr;
     int m_maxIterations = 100;
-    QVector3D m_colorTint = QVector3D(0.2f, 0.0f, 0.6f);
+
+    QList<QVector3D> m_gradientColors = {
+        QVector3D(0.0f, 0.0f, 0.02f), QVector3D(0.0f, 0.5f, 1.0f),
+        QVector3D(1.0f, 1.0f, 1.0f), QVector3D(1.0f, 0.4f, 1.0f)
+    };
+    QList<float> m_gradientStops = { 0.0f, 0.33f, 0.66f, 1.0f };
 
     double m_currentZoom = 2.0;
     double m_targetZoom = 2.0;
@@ -67,7 +76,9 @@ class FractalEngine : public QQuickFramebufferObject {
     QML_ELEMENT
 
     Q_PROPERTY(int maxIterations READ maxIterations WRITE setMaxIterations NOTIFY maxIterationsChanged)
-    Q_PROPERTY(QVector3D colorTint READ colorTint WRITE setColorTint NOTIFY colorTintChanged)
+
+    Q_PROPERTY(QVariantList gradientPositions READ gradientPositions WRITE setGradientPositions NOTIFY gradientPositionsChanged)
+    Q_PROPERTY(QVariantList gradientColors READ gradientColors WRITE setGradientColors NOTIFY gradientColorsChanged)
 
     Q_PROPERTY(double zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomLevelChanged)
     Q_PROPERTY(QVector2D zoomCenter READ zoomCenter WRITE setZoomCenter NOTIFY zoomCenterChanged)
@@ -131,14 +142,14 @@ public:
         }
     }
 
-    QVector3D colorTint() const { return m_colorTint; }
-    void setColorTint(const QVector3D &val) {
-        if (m_colorTint != val) {
-            m_colorTint = val;
-            emit colorTintChanged();
-            update();
-        }
-    }
+    QVariantList gradientColors() const;
+    void setGradientColors(const QVariantList &colors);
+
+    QVariantList gradientPositions() const;
+    void setGradientPositions(const QVariantList &positions);
+
+    QList<QVector3D> internalGradientColors() const { return m_gradientColors; }
+    QList<float> internalGradientStops() const { return m_gradientStops; }
 
     double zoomLevel() const { return m_zoomLevel; }
     void setZoomLevel(double val) {
@@ -202,7 +213,8 @@ public:
 
 signals:
     void maxIterationsChanged();
-    void colorTintChanged();
+    void gradientColorsChanged();
+    void gradientPositionsChanged();
     void zoomLevelChanged();
     void zoomCenterChanged();
     void fractalTypeChanged();
@@ -213,7 +225,9 @@ signals:
 
 private:
     int m_maxIterations = 100;
-    QVector3D m_colorTint = QVector3D(0.2f, 0.0f, 0.6f);
+
+    QList<QVector3D> m_gradientColors;
+    QList<float> m_gradientStops;
 
     double m_zoomLevel = 2.0;
     double m_zoomCenterX = -0.5;

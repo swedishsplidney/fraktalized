@@ -9,7 +9,9 @@ uniform vec2 u_resolution;
 uniform dvec2 u_zoom_center;
 uniform double u_zoom_level;
 uniform float u_max_iter;
-uniform vec3 u_color_tint;
+
+uniform vec3 u_gradient_colors[4];
+uniform float u_gradient_stops[4];
 
 uniform int u_fractal_type; // 0 = mandelbrot, 1 = julia
 uniform dvec2 u_julia_c;     // constant point
@@ -80,7 +82,16 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
         // normalize escape velocity
         float t = iter / u_max_iter;
 
-        vec3 color = t * u_color_tint;
+        // gradient mapping
+        vec3 color = u_gradient_colors[0]; // fallback
+
+        for (int i = 0; i < 3; i++) {
+            if (t >= u_gradient_stops[i] && t <= u_gradient_stops[i+1]) {
+                float factor = (t - u_gradient_stops[i]) / (u_gradient_stops[i+1] - u_gradient_stops[i]);
+                color = mix(u_gradient_colors[i], u_gradient_colors[i+1], factor);
+                break;
+            }
+        }
 
         // boost brightness at edges
         color += vec3(pow(t, 2.0) * 0.4);

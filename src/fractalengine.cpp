@@ -100,7 +100,18 @@ void FractalFBORenderer::render() {
 
     m_program->setUniformValue("u_resolution", QVector2D(width, height));
     m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
-    m_program->setUniformValue("u_color_tint", m_colorTint);
+
+    // color
+    QVector3D colors[4];
+    float stops[4];
+    for (int i = 0; i < 4; ++i) {
+        colors[i] = (i < m_gradientColors.size()) ? m_gradientColors[i] : QVector3D(0.0f, 0.0f, 0.0f);
+        stops[i]  = (i < m_gradientStops.size()) ? m_gradientStops[i] : (static_cast<float>(i) / 3.0f);
+    }
+
+    m_program->setUniformValueArray("u_gradient_colors", colors, 4);
+    m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+
     m_program->setUniformValue("u_fractal_type", m_fractalType);
 
     m_program->setUniformValue("u_aaSamples", m_aaSamples);
@@ -164,7 +175,18 @@ void FractalFBORenderer::render() {
             // pass layout constraints to the shader
             float highResIterations = m_maxIterations * 1.0f;
             m_program->setUniformValue("u_max_iter", highResIterations);
-            m_program->setUniformValue("u_color_tint", m_colorTint);
+
+            // color
+            QVector3D colors[4];
+            float stops[4];
+            for (int i = 0; i < 4; ++i) {
+                colors[i] = (i < m_gradientColors.size()) ? m_gradientColors[i] : QVector3D(0.0f, 0.0f, 0.0f);
+                stops[i]  = (i < m_gradientStops.size()) ? m_gradientStops[i] : (static_cast<float>(i) / 3.0f);
+            }
+
+            m_program->setUniformValueArray("u_gradient_colors", colors, 4);
+            m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+
             m_program->setUniformValue("u_fractal_type", m_fractalType);
 
             // the shader needs the total image resolution
@@ -274,17 +296,69 @@ void FractalFBORenderer::render() {
 // fractalengine implementation
 
 FractalEngine::FractalEngine() : m_viewportScale(1.0f) {
-    // class construction properties managed implicitly by the framework
+    m_gradientColors.append(QVector3D(0.0f, 0.0f, 0.02f));
+    m_gradientColors.append(QVector3D(0.0f, 0.5f, 1.0f));
+    m_gradientColors.append(QVector3D(1.0f, 1.0f, 1.0f));
+    m_gradientColors.append(QVector3D(1.0f, 0.4f, 1.0f));
+
+    m_gradientStops.append(0.0f);
+    m_gradientStops.append(0.33f);
+    m_gradientStops.append(0.66f);
+    m_gradientStops.append(1.0f);
 }
 
 QQuickFramebufferObject::Renderer *FractalEngine::createRenderer() const {
     return new FractalFBORenderer();
 }
 
+// convert qvector3d to qvariant list
+QVariantList FractalEngine::gradientColors() const {
+    QVariantList list;
+    for (const auto &color : m_gradientColors) {
+        list.append(QColor::fromRgbF(color.x(), color.y(), color.z()));
+    }
+    return list;
+}
+
+void FractalEngine::setGradientColors(const QVariantList &colors) {
+    QList<QVector3D> newColors;
+    for (const auto &element : colors) {
+        QColor col = element.value<QColor>();
+        newColors.append(QVector3D(col.redF(), col.greenF(), col.blueF()));
+    }
+    if (m_gradientColors != newColors) {
+        m_gradientColors = newColors;
+        emit gradientColorsChanged();
+        update();
+    }
+}
+
+// convert floats to variant lists
+QVariantList FractalEngine::gradientPositions() const {
+    QVariantList list;
+    for (float stop : m_gradientStops) {
+        list.append(stop);
+    }
+    return list;
+}
+
+void FractalEngine::setGradientPositions(const QVariantList &positions) {
+    QList<float> newStops;
+    for (const auto &element : positions) {
+        newStops.append(element.toFloat());
+    }
+    if (m_gradientStops != newStops) {
+        m_gradientStops = newStops;
+        emit gradientPositionsChanged();
+        update();
+    }
+}
+
 void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
     auto *engine = static_cast<FractalEngine *>(item);
     this->setMaxIterations(engine->maxIterations());
-    this->setColorTint(engine->colorTint());
+
+    this->setGradientData(engine->internalGradientColors(), engine->internalGradientStops());
 
     this->setTargetZoom(engine->zoomLevel());
     this->setTargetCenter(engine->zoomCenterX(), engine->zoomCenterY());

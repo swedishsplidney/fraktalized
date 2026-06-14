@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import fraktalizedModule
 
 Window {
@@ -16,7 +17,6 @@ Window {
         anchors.fill: parent
 
         maxIterations: Math.round(maxIterationsSlider.value)
-        colorTint: Qt.vector3d(rSlider.value, gSlider.value, bSlider.value)
         fractalType: typeSelector.currentIndex
         juliaC: Qt.vector2d(parseFloat(realInput.text), parseFloat(imagInput.text))
 
@@ -125,12 +125,28 @@ Window {
 
                 ComboBox {
                     id: typeSelector
-                    model: ["mandelbrot set", "julia set"]
+                    model: ["mandelbrot set", "julia set", "burning ship set"]
                     Layout.fillWidth: true
 
+                    function applyDefaultView() {
+                        switch (currentIndex) {
+                            case 0: // mandelbrot
+                                engine.zoomLevel = 2.0
+                                engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
+                                break;
+                            case 1: // julia
+                                engine.zoomLevel = 2.0
+                                engine.zoomCenter = Qt.vector2d(0.0, 0.0)
+                                break;
+                            case 2: // burning ship
+                                engine.zoomLevel = 0.1
+                                engine.zoomCenter = Qt.vector2d(-1.755, -0.03)
+                                break;
+                        }
+                    }
+
                     onCurrentIndexChanged: {
-                        engine.zoomLevel = 2.0
-                        engine.zoomCenter = Qt.vector2d(currentIndex === 0 ? -0.5 : 0.0, 0.0)
+                        applyDefaultView()
                     }
                 }
 
@@ -373,27 +389,138 @@ Window {
                 }
 
                 // color controls
-                Text { text: "color setup:"; color: "#8a90a6"; font.pixelSize: 13; Layout.fillWidth: true }
+                Text { text: "color gradient maps"; color: "#8a90a6"; font.pixelSize: 13; Layout.fillWidth: true }
 
                 ColumnLayout {
-                    spacing: 5
+                    // gradient stops
+                    id: gradientEditorContainer
+                    spacing: 12
                     Layout.fillWidth: true
-                    Text { text: "red:"; color: "#ff5555"; font.pixelSize: 11 }
-                    Slider { id: rSlider; Layout.fillWidth: true; from: 0.0; to: 2.0; value: 0.2 }
+
+                    function updateStopPosition(index, newPos) {
+                        stops[index].pos = Math.max(0.0, Math.min(1.0, newPos));
+                        updateEngineGradient();
+                    }
+
+                    property var stops: [
+                        { pos: 0.0, color: "#000000" },
+                        { pos: 0.35, color: "#ff3300" },
+                        { pos: 0.75, color: "#ffcc00" },
+                        { pos: 1.0, color: "#ffffff" }
+                    ]
+
+                    // compile and stream values to c++
+                    function updateEngineGradient() {
+                        let sortedStops = [...stops].sort((a, b) => a.pos - b.pos);
+
+                        let positions = [];
+                        let colors = [];
+                        for (let i = 0; i < sortedStops.length; i++) {
+                            positions.push(sortedStops[i].pos);
+                            colors.push(sortedStops[i].color);
+                        }
+
+                        engine.gradientPositions = positions;
+                        engine.gradientColors = colors;
+                    }
+
+                    Component.onCompleted: updateEngineGradient()
+
+                    // gradient preview
+                    Rectangle {
+                        id: gradientTrack
+                        height: 24
+                        Layout.fillWidth: true
+                        radius: 4
+                        border.color: "#444444"
+
+                        // visualize stops
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: gradientEditorContainer.stops[0].pos; color: gradientEditorContainer.stops[0].color }
+                            GradientStop { position: gradientEditorContainer.stops[1].pos; color: gradientEditorContainer.stops[1].color }
+                            GradientStop { position: gradientEditorContainer.stops[2].pos; color: gradientEditorContainer.stops[2].color }
+                            GradientStop { position: gradientEditorContainer.stops[3].pos; color: gradientEditorContainer.stops[3].color }
+                        }
+                    }
+
+                    // interactive handles
+                    Item {
+                        id: handleTrack
+                        Layout.fillWidth: true
+                        height: 24
+
+                        Repeater {
+                            model: gradientEditorContainer.stops
+
+                            // each color stop anchor
+                            Rectangle {
+                                id: handleAnchor
+                                width: 10
+                                height: 24
+                                radius: 2
+                                color: modelData.color
+                                border.color: dragArea.pressed ? "#7d00ff" : "#ffffff"
+                                border.width: 1.5
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                // map the 0 - 1 position to width coords
+                                x: modelData.pos * (handleTrack.width - width)
+
+                                MouseArea {
+                                    id: dragArea
+                                    anchors.fill: parent
+                                    drag.target: parent
+                                    drag.axis: Drag.XAxis
+                                    drag.minimumX: 0
+                                    drag.maximumX: handleTrack.width - handleAnchor.width
+
+                                    // update data map when dragging
+                                    onPositionChanged: {
+                                        if (pressed) {
+                                            let maxTrackWidth = handleTrack.width - handleAnchor.width
+                                            if (maxTrackWidth <= 0) return;
+
+                                            let newPos = handleAnchor.x / maxTrackWidth
+                                            gradientEditorContainer.updateStopPosition(index, newPos)
+
+                                            gradientTrack.gradient.stops[index].position = Math.max(0.0, Math.min(1.0, newPos))
+                                        }
+                                    }
+
+                                    // double click an anchor to change its color
+                                    onDoubleClicked: {
+                                        colorPicker.targetIndex = index
+                                        colorPicker.selectedColor = modelData.color
+                                        colorPicker.open()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "double click anchors to change colors"
+                        color: "#555a6b"
+                        font.pixelSize: 10
+                        font.italic: true
+                        Layout.alignment: Qt.AlignHCenter
+                    }
                 }
 
-                ColumnLayout {
-                    spacing: 5
-                    Layout.fillWidth: true
-                    Text { text: "green:"; color: "#55ff55"; font.pixelSize: 11 }
-                    Slider { id: gSlider; Layout.fillWidth: true; from: 0.0; to: 2.0; value: 0.2 }
-                }
+                // color picker popup
+                ColorDialog {
+                    id: colorPicker
+                    title: "choose stop color"
+                    property int targetIndex: 0
 
-                ColumnLayout {
-                    spacing: 5
-                    Layout.fillWidth: true
-                    Text { text: "blue:"; color: "#5555ff"; font.pixelSize: 11 }
-                    Slider { id: bSlider; Layout.fillWidth: true; from: 0.0; to: 2.0; value: 0.2 }
+                    onAccepted: {
+                        gradientEditorContainer.stops[targetIndex].color = colorPicker.selectedColor.toString()
+
+                        gradientEditorContainer.stopsChanged()
+
+                        gradientEditorContainer.updateEngineGradient()
+                    }
                 }
 
                 // julia constant
@@ -548,8 +675,8 @@ Window {
                 verticalAlignment: Text.AlignVCenter
             }
             onClicked: {
-                engine.zoomLevel = 2.0
-                engine.zoomCenter = Qt.vector2d(typeSelector.currentIndex === 0 ? -0.5 : 0.0, 0.0)
+                typeSelector.applyDefaultView()
+
                 maxIterationsSlider.value = 100
                 sidebar.forceActiveFocus()
             }
