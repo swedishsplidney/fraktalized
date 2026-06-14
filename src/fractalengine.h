@@ -10,6 +10,12 @@
 #include <QImage>
 #include <QDateTime>
 #include <QDebug>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QFile>
+#include <QStandardPaths>
+#include <QDir>
 
 // handles the actual GPU rendering work inside an isolated fbo texture canvas
 class FractalFBORenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_4_0_Core {
@@ -211,6 +217,12 @@ public:
 
     void updateComputedBoundsDirect(double w, double h);
 
+    Q_INVOKABLE void savePreset(const QString &name, const QVariantList &positions, const QVariantList &colors, int fractalType, double zoom, const QVector2D &center);
+    Q_INVOKABLE QStringList loadPresetNames();
+    Q_INVOKABLE QVariantMap loadPresetData(const QString &name);
+
+    Q_INVOKABLE void deletePreset(const QString &name);
+
 signals:
     void maxIterationsChanged();
     void gradientColorsChanged();
@@ -251,6 +263,12 @@ private:
     double m_maxX = 1.5;
     double m_minY = -1.5;
     double m_maxY = 1.5;
+
+    QString getPresetsFilePath() const {
+        QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+        QDir().mkpath(appDataPath);
+        return appDataPath + "/presets.json";
+    }
 };
 
 #endif

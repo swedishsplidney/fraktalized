@@ -417,3 +417,145 @@ void FractalEngine::updateComputedBoundsDirect(double w, double h) {
 void FractalEngine::updateComputedBounds() {
     updateComputedBoundsDirect(this->width(), this->height());
 }
+
+// save presets
+void FractalEngine::savePreset(const QString & name, const QVariantList &positions, const QVariantList &colors, int fractalType, double zoom, const QVector2D &center) {
+    if (name.isEmpty()) return;
+
+    QString filePath = getPresetsFilePath();
+    QJsonObject masterRoot;
+
+    // read existing presets
+    QFile file(filePath);
+    if (file.open(QIODevice::ReadOnly)) {
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        if (doc.isObject()) {
+            masterRoot = doc.object();
+        }
+        file.close();
+    }
+
+    // add new preset entry
+    QJsonObject presetObj;
+
+    // gradient
+    QJsonArray stopsArray;
+    for (int i = 0; i < positions.size() && i < colors.size(); ++i) {
+        QJsonObject stop;
+        stop["pos"] = positions[i].toDouble();
+        stop["color"] = colors[i].toString();
+        stopsArray.append(stop);
+    }
+    presetObj["stops"] = stopsArray;
+    presetObj["set"] = fractalType;
+    presetObj["zoom"] = zoom;
+
+    // convert coords
+    QJsonObject centerObj;
+    centerObj["x"] = static_cast<double>(center.x());
+    centerObj["y"] = static_cast<double>(center.y());
+    presetObj["center"] = centerObj;
+
+    // insert preset
+    masterRoot[name] = presetObj;
+
+    if (file.open(QIODevice::WriteOnly)) {
+        QJsonDocument doc(masterRoot);
+        file.write(doc.toJson(QJsonDocument::Indented));
+        file.close();
+        std::cout << "saved preset: " << name.toStdString() << " to " << filePath.toStdString() << std::endl;
+    }
+}
+
+// load preset names
+QStringList FractalEngine::loadPresetNames() {
+    QStringList names;
+    QFile file (getPresetsFilePath());
+
+    if (file.open(QIODevice::ReadOnly)) {
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        if (doc.isObject()) {
+            names = doc.object().keys();
+        }
+        file.close();
+    }
+
+    // fallback
+    if (names.isEmpty()) {
+        names << "no presets saved!";
+    }
+    return names;
+}
+
+// load preset data
+QVariantMap FractalEngine::loadPresetData(const QString &name) {
+    QVariantMap result;
+    QFile file(getPresetsFilePath());
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        return result;
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
+
+    if (!doc.isObject()) return result;
+
+    QJsonObject masterRoot = doc.object();
+    if (!masterRoot.contains(name)) return result;
+
+    QJsonObject presetObj = masterRoot[name].toObject();
+
+    // convert into raw QVariant structures
+    QVariantList retrievedStops;
+    QJsonArray stopsArr = presetObj["stops"].toArray();
+    for (const auto &stopVal : stopsArr) {
+        QJsonObject stopObj = stopVal.toObject();
+        QVariantMap stopMap;
+        stopMap["pos"] = stopObj["pos"].toDouble();
+        stopMap["color"] = stopObj["color"].toString();
+        retrievedStops.append(stopMap);
+    }
+
+    result["stops"] = retrievedStops;
+    result["set"] = presetObj["set"].toInt();
+    result["zoom"] = presetObj["zoom"].toDouble();
+
+    // convert center to qvector2d
+    QJsonObject centerObj = presetObj["center"].toObject();
+    QVector2D centerVec(centerObj["x"].toDouble(), centerObj["y"].toDouble());
+    result["center"] = centerVec;
+
+    return result;
+}
+
+void FractalEngine::deletePreset(const QString &name) {
+    if (name.isEmpty() || name == "no presets saved!") return;
+
+    QString filePath = getPresetsFilePath();
+    QJsonObject masterRoot;
+
+    // read the preset file
+    QFile file(filePath);
+    if (file.open(QIODevice::ReadOnly)) {
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        if (doc.isObject()) {
+            masterRoot = doc.object();
+        }
+        file.close();
+    }
+
+    // remove the preset
+    if (masterRoot.contains(name)) {
+        masterRoot.remove(name);
+    } else {
+        return;
+    }
+
+    // update json
+    if (file.open(QIODevice::WriteOnly)) {
+        QJsonDocument doc(masterRoot);
+        file.write(doc.toJson(QJsonDocument::Indented));
+        file.close();
+    }
+}

@@ -566,6 +566,205 @@ Window {
                     }
                 }
 
+                // preset manager
+                ColumnLayout {
+                    spacing: 8
+                    Layout.fillWidth: true
+
+                    Text {
+                        text: "preset manager"
+                        color: "#8a90a6"
+                        font.pixelSize: 12
+                        font.family: "Monospace"
+                    }
+
+                    // save
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        TextField {
+                            id: presetNameInput
+                            placeholderText: "preset name..."
+                            placeholderTextColor: "#444444"
+                            Layout.fillWidth: true
+                            color: "#ffffff"
+                            font.pixelSize: 12
+                            font.family: "Monospace"
+                            leftPadding: 8
+                            background: Rectangle {
+                                color: "#222222"
+                                radius: 4
+                                border.color: presetNameInput.activeFocus ? "#7d00ff" : "#444444"
+                            }
+                        }
+
+                        Button {
+                            id: savePresetButton
+                            text: "save"
+                            width: 60
+                            height: 28
+                            background: Rectangle {
+                                color: savePresetButton.hovered ? "#4d0099" : "#2a0055"
+                                border.color: savePresetButton.hovered ? "#7d00ff" : "#5500aa"
+                                border.width: 1
+                                radius: 4
+                            }
+                            contentItem: Text {
+                                text: savePresetButton.text
+                                color: "#ffffff"
+                                font.pixelSize: 11
+                                font.family: "Monospace"
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            onClicked: {
+                                if (presetNameInput.text.trim() === "") return;
+
+                                // color info
+                                let positions = [];
+                                let colors = [];
+                                for (let i = 0; i < gradientEditorContainer.stops.length; i++) {
+                                    positions.push(gradientEditorContainer.stops[i].pos);
+                                    colors.push(gradientEditorContainer.stops[i].color);
+                                }
+
+                                // other info
+                                let currentSet = typeSelector.currentIndex;
+                                let currentZoom = engine.zoomLevel;
+                                let currentCenter = engine.zoomCenter;
+
+                                if (typeof engine.savePreset === "function") {
+                                    engine.savePreset(
+                                        presetNameInput.text.trim(),
+                                        positions,
+                                        colors,
+                                        currentSet,
+                                        currentZoom,
+                                        currentCenter
+                                    );
+
+                                    if (typeof engine.loadPresetNames === "function") {
+                                        presetSelector.model = engine.loadPresetNames();
+                                    }
+                                }
+
+                                presetNameInput.text = "";
+                                presetNameInput.focus = false;
+                            }
+                        }
+                    }
+
+                    // load selector and button
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        ComboBox {
+                            id: presetSelector
+                            Layout.fillWidth: true
+
+                            Component.onCompleted: {
+                                if (typeof engine.loadPresetNames === "function") {
+                                    presetSelector.model = engine.loadPresetNames();
+                                }
+                            }
+                        }
+
+                        Button {
+                            id: loadPresetButton
+                            text: "load"
+                            width: 60
+                            height: 28
+                            background: Rectangle {
+                                color: loadPresetButton.hovered ? "#4d0099" : "#2a0055"
+                                border.color: loadPresetButton.hovered ? "#7d00ff" : "#5500aa"
+                                border.width: 1
+                                radius: 4
+                            }
+                            contentItem: Text {
+                                text: loadPresetButton.text
+                                color: "#ffffff"
+                                font.pixelSize: 11
+                                font.family: "Monospace"
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            onClicked: {
+                                if (typeof engine.loadPresetData !== "function") return;
+
+                                let presetState = engine.loadPresetData(presetSelector.currentText);
+                                if (!presetState) return;
+
+                                // set color stops
+                                let retrievedStops = presetState.stops;
+                                if (retrievedStops && retrievedStops.length > 0) {
+                                    gradientEditorContainer.stops = retrievedStops;
+                                    gradientEditorContainer.stopsChanged();
+
+                                    for (let i = 0; i < retrievedStops.length; i++) {
+                                        gradientTrack.gradient.stops[i].position = retrievedStops[i].pos;
+                                        gradientTrack.gradient.stops[i].color = retrievedStops[i].color;
+                                    }
+                                }
+
+                                // set fractal type
+                                if (presetState.set !== undefined) {
+                                    typeSelector.currentIndex = presetState.set;
+                                }
+
+                                // set coords and zoom
+                                if (presetState.zoom !== undefined) {
+                                    engine.zoomLevel = presetState.zoom;
+                                }
+                                if (presetState.center !== undefined) {
+                                    engine.zoomCenter = presetState.center;
+                                }
+
+                                gradientEditorContainer.updateEngineGradient();
+                            }
+                        }
+
+                        // delete preset button
+                        Button {
+                            id: deletePresetButton
+                            text: "x"
+                            Layout.preferredWidth: 28
+                            Layout.preferredHeight: 28
+
+                            background: Rectangle {
+                                color: deletePresetButton.hovered ? "#aa0000" : "#550000"
+                                border.color: deletePresetButton.hovered ? "#ff0000" : "#880000"
+                                border.width: 1
+                                radius: 4
+                            }
+                            contentItem: Text {
+                                text: deletePresetButton.text
+                                color: "#ffffff"
+                                font.pixelSize: 11
+                                font.family: "Monospace"
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            onClicked: {
+                                if (typeof engine.deletePreset !== "function") return;
+
+                                engine.deletePreset(presetSelector.currentText);
+
+                                if (typeof engine.loadPresetNames === "function") {
+                                    presetSelector.model = engine.loadPresetNames();
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // export panel
                 ColumnLayout {
                     spacing: 8
