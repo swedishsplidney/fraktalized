@@ -45,11 +45,15 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
         // burning ship
         z = dvec2(0.0, 0.0);
         c = coord;
+    } else if (u_fractal_type == 3) {
+        // newton fractal
+        z = coord;
+        c = dvec2(0.0, 0.0);
     }
 
     float iter = u_max_iter;
 
-    // fractal loop Z = Z^2 + C
+    // fractal loop
     for (int i = 0; i < 2147483647; i++) {
         if (float(i) >= u_max_iter) break;
 
@@ -57,21 +61,54 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
         double y_next;
 
         if (u_fractal_type <= 1) {
-            // mandelbrot / julia
+            // mandelbrot / julia: Z = Z^2 + C
             x_next = z.x * z.x - z.y * z.y + c.x;
             y_next = 2.0 * z.x * z.y + c.y;
+
+            z = dvec2(x_next, y_next);
+
+            if (dot (z, z) > 4.0) {
+                iter = float(i);
+                break;
+            }
         } else if (u_fractal_type == 2) {
-            // burning ship
+            // burning ship: Z = | Z^2 | + C
             dvec2 absZ = abs(z);
             x_next = absZ.x * absZ.x - absZ.y * absZ.y + c.x;
             y_next = 2.0 * absZ.x * absZ.y + c.y;
-        }
 
-        z = dvec2(x_next, y_next);
+            z = dvec2(x_next, y_next);
 
-        if (dot (z, z) > 4.0) {
-            iter = float(i);
-            break;
+            if (dot (z, z) > 4.0) {
+                iter = float(i);
+                break;
+            }
+        } else if (u_fractal_type == 3) {
+            // newton: Z^3 - 1 = 0
+            double r2 = (z.x * z.x + z.y * z.y);
+            double denom = 3.0 * r2 * r2;
+
+            // no dividing by zero
+            if (denom < 0.0000001) { iter = u_max_iter; break; }
+
+            x_next = (2.0 / 3.0) * z.x + (z.x * z.x - z.y * z.y) / denom;
+            y_next = (2.0 / 3.0) * z.y - (2.0 * z.x * z.y) / denom;
+
+            dvec2 z_next = dvec2(x_next, y_next);
+            dvec2 diff = z_next - z;
+            double dist2 = dot(diff, diff);
+
+            // tolerance limit
+            if (dist2 < 0.0000001) {
+                // smoothing math
+                float log_zn = log(float(dist2));
+                float nu = log(log_zn / log(0.0000001)) / log(3.0);
+
+                iter = float(i) + 1.0 - nu;
+                z = z_next;
+                break;
+            }
+            z = z_next;
         }
     }
 
@@ -85,11 +122,33 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
         // gradient mapping
         vec3 color = u_gradient_colors[0]; // fallback
 
-        for (int i = 0; i < 3; i++) {
-            if (t >= u_gradient_stops[i] && t <= u_gradient_stops[i+1]) {
-                float factor = (t - u_gradient_stops[i]) / (u_gradient_stops[i+1] - u_gradient_stops[i]);
-                color = mix(u_gradient_colors[i], u_gradient_colors[i+1], factor);
-                break;
+        if (u_fractal_type <= 2) {
+            // mandelbrot, julia, burning ship
+            for (int i = 0; i < 3; i++) {
+                if (t >= u_gradient_stops[i] && t <= u_gradient_stops[i+1]) {
+                    float factor = (t - u_gradient_stops[i]) / (u_gradient_stops[i+1] - u_gradient_stops[i]);
+                    color = mix(u_gradient_colors[i], u_gradient_colors[i+1], factor);
+                    break;
+                }
+            }
+        } else if (u_fractal_type == 3) {
+            // newton
+            float smooth_t = fract(t * 15.0);
+
+            for (int i = 0; i < 3; i++) {
+                if (smooth_t >= u_gradient_stops[i] && smooth_t <= u_gradient_stops[i+1]) {
+                    float factor = (smooth_t - u_gradient_stops[i]) / (u_gradient_stops[i+1] - u_gradient_stops[i]);
+                    color = mix(u_gradient_colors[i], u_gradient_colors[i+1], factor);
+                    break;
+                }
+            }
+
+            if (z.x > 0.0) {
+                color = mix(color, u_gradient_colors[1], 0.25);
+            } else if (z.y > 0.0) {
+                color = mix(color, u_gradient_colors[2], 0.25);
+            } else {
+                color = mix(color, u_gradient_colors[3], 0.25);
             }
         }
 
