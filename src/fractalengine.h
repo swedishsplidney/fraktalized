@@ -74,6 +74,20 @@ private:
     int m_aaSamples = 1;
     QSize m_scaledSize;
 
+    GLuint m_compute_program = 0;
+    GLuint m_accumulation_texture = 0;
+    int m_current_fbo_w = 0;
+    int m_current_fbo_h = 0;
+
+    void runTrajectoryCompute(int width, int height);
+    void checkAccumulationStorage(int width, int height);
+
+    bool m_isExportingBuddhabrot = false;
+    int m_exportPassCount = 0;
+    const int m_maxExportPasses = 50;
+    GLuint m_exportAccumulationTex = 0;
+    QOpenGLFramebufferObject* m_exportFbo = nullptr;
+
     void init();
 };
 

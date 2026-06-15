@@ -3,6 +3,8 @@
 #include <QOpenGLFramebufferObject>
 #include <QPainter>
 #include <QQuickWindow>
+#include <QOpenGLVersionFunctionsFactory>
+#include <QOpenGLFunctions_4_3_Core>
 
 FractalFBORenderer::FractalFBORenderer() {
     // constructor runs safely on the dedicated graphics render thread context loop
@@ -26,6 +28,27 @@ void FractalFBORenderer::init() {
 
     m_program->bindAttributeLocation("aPos", 0);
     m_program->link();
+
+    QOpenGLShader *compShader = new QOpenGLShader(QOpenGLShader::Compute);
+    if (compShader->compileSourceFile("shaders/trajectory.glsl")) {
+        m_compute_program = glCreateProgram();
+        glAttachShader(m_compute_program, compShader->shaderId());
+        glLinkProgram(m_compute_program);
+
+        // check linkage status
+        GLint linkSuccess = 0;
+        glGetProgramiv(m_compute_program, GL_LINK_STATUS, &linkSuccess);
+        if (!linkSuccess) {
+            char infoLog[512];
+            glGetProgramInfoLog(m_compute_program, 512, nullptr, infoLog);
+            std::cout << "compute Shader link error: " << infoLog << std::endl;
+        } else {
+            std::cout << "compute shader linked completely: ok" << std::endl;
+        }
+    } else {
+        std::cout << "compute shader compilation failed!" << std::endl;
+    }
+    delete compShader;
 
     m_initialized = true;
 }
@@ -68,7 +91,7 @@ void FractalFBORenderer::render() {
     if (std::abs(m_targetCenterX - m_currentCenterX) < centerSnapLimit) m_currentCenterX = m_targetCenterX;
     if (std::abs(m_targetCenterY - m_currentCenterY) < centerSnapLimit) m_currentCenterY = m_targetCenterY;
 
-    if (m_currentZoom != m_targetZoom || m_currentCenterX != m_targetCenterX || m_currentCenterY != m_targetCenterY) {
+    if (m_currentZoom != m_targetZoom || m_currentCenterX != m_targetCenterX || m_currentCenterY != m_targetCenterY || m_fractalType == 4) {
         update();
     }
 
@@ -79,8 +102,6 @@ void FractalFBORenderer::render() {
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     glDisable(GL_BLEND);
-
-    m_program->bind();
 
     float screenAspect = (float)width / (float)height;
     float scaleX = 1.0f;
@@ -96,39 +117,12 @@ void FractalFBORenderer::render() {
         scaleY = 1.0f;
     }
 
-    m_program->setUniformValue("u_tile_bounds", QVector4D(-scaleX, -scaleY, scaleX, scaleY));
-
-    m_program->setUniformValue("u_resolution", QVector2D(width, height));
-    m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
-
     // color
     QVector3D colors[4];
     float stops[4];
     for (int i = 0; i < 4; ++i) {
         colors[i] = (i < m_gradientColors.size()) ? m_gradientColors[i] : QVector3D(0.0f, 0.0f, 0.0f);
         stops[i]  = (i < m_gradientStops.size()) ? m_gradientStops[i] : (static_cast<float>(i) / 3.0f);
-    }
-
-    m_program->setUniformValueArray("u_gradient_colors", colors, 4);
-    m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
-
-    m_program->setUniformValue("u_fractal_type", m_fractalType);
-
-    m_program->setUniformValue("u_aaSamples", m_aaSamples);
-
-    int locZoomLevel = m_program->uniformLocation("u_zoom_level");
-    int locZoomCenter = m_program->uniformLocation("u_zoom_center");
-    int locJuliaC = m_program->uniformLocation("u_julia_c");
-
-    // pass double values directly to the resolver
-    if (locZoomLevel != -1) {
-        this->glUniform1d(locZoomLevel, m_currentZoom);
-    }
-    if (locZoomCenter != -1) {
-        this->glUniform2d(locZoomCenter, m_currentCenterX, m_currentCenterY);
-    }
-    if (locJuliaC != -1) {
-        this->glUniform2d(locJuliaC, static_cast<double>(m_juliaC.x()), static_cast<double>(m_juliaC.y()));
     }
 
     // local coordinate structure passed down to the pipeline unit
@@ -142,152 +136,268 @@ void FractalFBORenderer::render() {
          1.0f,  1.0f, 0.0f,
     };
 
-    m_program->enableAttributeArray(0);
-    m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);
+    // escape time
+    if (m_fractalType <= 3) {
+        m_program->bind();
+        m_program->setUniformValue("u_tile_bounds", QVector4D(-scaleX, -scaleY, scaleX, scaleY));
+        m_program->setUniformValue("u_resolution", QVector2D(width, height));
+        m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
+        m_program->setUniformValueArray("u_gradient_colors", colors, 4);
+        m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+        m_program->setUniformValue("u_fractal_type", m_fractalType);
+        m_program->setUniformValue("u_aaSamples", m_aaSamples);
 
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+        int locZoomLevel = m_program->uniformLocation("u_zoom_level");
+        int locZoomCenter = m_program->uniformLocation("u_zoom_center");
+        int locJuliaC = m_program->uniformLocation("u_julia_c");
 
-    m_program->disableAttributeArray(0);
-    m_program->release();
+        if (locZoomLevel != -1)  this->glUniform1d(locZoomLevel, m_currentZoom);
+        if (locZoomCenter != -1) this->glUniform2d(locZoomCenter, m_currentCenterX, m_currentCenterY);
+        if (locJuliaC != -1)     this->glUniform2d(locJuliaC, static_cast<double>(m_juliaC.x()), static_cast<double>(m_juliaC.y()));
+
+        m_program->enableAttributeArray(0);
+        m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        m_program->disableAttributeArray(0);
+        m_program->release();
+    }
+    // trajectory accumulation
+    else if (m_fractalType == 4) {
+        QOpenGLContext *currentContext = QOpenGLContext::currentContext();
+        auto *gl43 = currentContext ? QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_4_3_Core>(currentContext) : nullptr;
+
+        if (!gl43) {
+            std::cout << "failed to obtain openGL 4.3 function pointers! compute shaders not supported :(" << std::endl;
+            return;
+        }
+
+        // gen texture id (if id doesnt alr exist)
+        static bool texGenerated = false;
+        if (!texGenerated) {
+            glGenTextures(1, &m_accumulation_texture);
+            texGenerated = true;
+        }
+
+        // dynamically track texture size and reallocate gpu if size changed
+        static int lastWidth = 0;
+        static int lastHeight = 0;
+        glBindTexture(GL_TEXTURE_2D, m_accumulation_texture);
+
+        if (width != lastWidth || height != lastHeight) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            lastWidth = width;
+            lastHeight = height;
+
+            std::vector<uint32_t> zeroData(width * height, 0u);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_INT, zeroData.data());
+        }
+
+        // clear accumulation buffers if camera changes
+        static double lastTargetX = 0;
+        static double lastTargetY = 0;
+        static double lastTargetZoom = 0;
+
+        if (m_targetCenterX != lastTargetX || m_targetCenterY != lastTargetY || m_targetZoom != lastTargetZoom) {
+            std::vector<uint32_t> zeroData(width * height, 0u);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_INT, zeroData.data());
+
+            lastTargetX = m_targetCenterX;
+            lastTargetY = m_targetCenterY;
+            lastTargetZoom = m_targetZoom;
+        }
+
+        // bind image to unit 0
+        gl43->glBindImageTexture(0, m_accumulation_texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+
+        // compute workers
+        glUseProgram(m_compute_program);
+        glUniform2d(glGetUniformLocation(m_compute_program, "u_zoom_center"), m_currentCenterX, m_currentCenterY);
+        glUniform1d(glGetUniformLocation(m_compute_program, "u_zoom_level"), m_currentZoom);
+        glUniform1f(glGetUniformLocation(m_compute_program, "u_max_iter"), static_cast<float>(m_maxIterations));
+        glUniform2f(glGetUniformLocation(m_compute_program, "u_resolution"), static_cast<float>(width), static_cast<float>(height));
+        glUniform1i(glGetUniformLocation(m_compute_program, "u_fractal_type"), m_fractalType);
+
+        GLuint groups_x = (width + 15) / 16;
+        GLuint groups_y = (height + 15) / 16;
+        gl43->glDispatchCompute(groups_x, groups_y, 1);
+
+        // wait until atomic stores finish
+        gl43->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glUseProgram(0);
+
+        m_program->bind();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, m_accumulation_texture);
+        m_program->setUniformValue("u_accumulation_sampler", 0);
+
+        m_program->setUniformValue("u_resolution", QVector2D(width, height));
+        m_program->setUniformValue("u_fractal_type", m_fractalType);
+        m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
+        m_program->setUniformValueArray("u_gradient_colors", colors, 4);
+        m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+
+        m_program->enableAttributeArray(0);
+        m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        m_program->disableAttributeArray(0);
+        m_program->release();
+    }
 
     // render to file engine
     if (m_pendingExport && m_exportWidth > 0 && m_exportHeight > 0) {
         m_pendingExport = false;
 
-        qDebug() << "started tiling render:" << m_exportWidth << "x" << m_exportHeight;
+        QOpenGLContext *currentContext = QOpenGLContext::currentContext();
+        auto *gl43 = currentContext ? QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_4_3_Core>(currentContext) : nullptr;
 
-        //create the final master image canvas
-        QImage masterImage(m_exportWidth, m_exportHeight, QImage::Format_RGBA8888);
-        masterImage.fill(Qt::black);
+        if (m_fractalType == 4 && !gl43) {
+            qWarning() << "Cannot export Buddhabrot: OpenGL 4.3 functions unavailable.";
+            return;
+        }
 
-        // define a tile size
-        const int tileSize = 2000;
+        qDebug() << "Initializing high-res render sequence:" << m_exportWidth << "x" << m_exportHeight;
 
-        // allocate a reusable fbo area for the gpu
-        QOpenGLFramebufferObjectFormat tileFormat;
-        tileFormat.setAttachment(QOpenGLFramebufferObject::NoAttachment);
-        tileFormat.setInternalTextureFormat(GL_RGBA8);
-        QOpenGLFramebufferObject tileFbo(tileSize, tileSize, tileFormat);
+        // setup the high res fbo buffer layout
+        QOpenGLFramebufferObjectFormat exportFormat;
+        exportFormat.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+        exportFormat.setInternalTextureFormat(GL_RGBA8);
+        m_exportFbo = new QOpenGLFramebufferObject(m_exportWidth, m_exportHeight, exportFormat);
 
-        if (tileFbo.bind()) {
-            m_program->bind();
+        if (m_fractalType == 4) {
+            // allocate giant high res texture storage unit
+            glGenTextures(1, &m_exportAccumulationTex);
+            glBindTexture(GL_TEXTURE_2D, m_exportAccumulationTex);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, m_exportWidth, m_exportHeight, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-            // pass layout constraints to the shader
-            float highResIterations = m_maxIterations * 1.0f;
-            m_program->setUniformValue("u_max_iter", highResIterations);
+            std::vector<uint32_t> zeroData(m_exportWidth * m_exportHeight, 0u);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_exportWidth, m_exportHeight, GL_RED_INTEGER, GL_UNSIGNED_INT, zeroData.data());
 
-            // color
-            QVector3D colors[4];
-            float stops[4];
-            for (int i = 0; i < 4; ++i) {
-                colors[i] = (i < m_gradientColors.size()) ? m_gradientColors[i] : QVector3D(0.0f, 0.0f, 0.0f);
-                stops[i]  = (i < m_gradientStops.size()) ? m_gradientStops[i] : (static_cast<float>(i) / 3.0f);
+            m_isExportingBuddhabrot = true;
+            m_exportPassCount = 0;
+        } else {
+            // traditional escape fractals don't need multi-frame splits
+            if (m_exportFbo->bind()) {
+                glViewport(0, 0, m_exportWidth, m_exportHeight);
+                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT);
+
+                m_program->bind();
+                m_program->setUniformValue("u_tile_bounds", QVector4D(-scaleX, -scaleY, scaleX, scaleY));
+
+                int expZoomLevel = m_program->uniformLocation("u_zoom_level");
+                int expZoomCenter = m_program->uniformLocation("u_zoom_center");
+                if (expZoomLevel != -1)  this->glUniform1d(expZoomLevel, m_targetZoom);
+                if (expZoomCenter != -1) this->glUniform2d(expZoomCenter, m_targetCenterX, m_targetCenterY);
+
+                m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
+                m_program->setUniformValue("u_fractal_type", m_fractalType);
+                m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
+                m_program->setUniformValueArray("u_gradient_colors", colors, 4);
+                m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+
+                m_program->enableAttributeArray(0);
+                m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+                m_program->disableAttributeArray(0);
+                m_program->release();
+
+                QImage masterImage = m_exportFbo->toImage().flipped(Qt::Vertical);
+                masterImage.save(m_exportFilename);
+                m_exportFbo->release();
+                delete m_exportFbo;
+                m_exportFbo = nullptr;
+                qDebug() << "Saved standard high-res image successfully.";
             }
+        }
+    }
 
-            m_program->setUniformValueArray("u_gradient_colors", colors, 4);
-            m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+    // passthrough loop engine
+    if (m_isExportingBuddhabrot && m_exportFbo) {
+        QOpenGLContext *currentContext = QOpenGLContext::currentContext();
+        auto *gl43 = currentContext ? QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_4_3_Core>(currentContext) : nullptr;
 
-            m_program->setUniformValue("u_fractal_type", m_fractalType);
+        // process 1 calculation step per frame context update
+        glUseProgram(m_compute_program);
+        glUniform2d(glGetUniformLocation(m_compute_program, "u_zoom_center"), m_targetCenterX, m_targetCenterY);
+        glUniform1d(glGetUniformLocation(m_compute_program, "u_zoom_level"), m_targetZoom);
+        glUniform1f(glGetUniformLocation(m_compute_program, "u_max_iter"), static_cast<float>(m_maxIterations));
+        glUniform2f(glGetUniformLocation(m_compute_program, "u_resolution"), static_cast<float>(m_exportWidth), static_cast<float>(m_exportHeight));
+        glUniform1i(glGetUniformLocation(m_compute_program, "u_fractal_type"), m_fractalType);
 
-            // the shader needs the total image resolution
-            m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
+        gl43->glBindImageTexture(0, m_exportAccumulationTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
-            QPainter painter(&masterImage);
+        GLuint groups_x = (m_exportWidth + 15) / 16;
+        GLuint groups_y = (m_exportHeight + 15) / 16;
 
-            // loop through the image grid one tile at a time
-            for (int y = 0; y < m_exportHeight; y += tileSize) {
-                for (int x = 0; x < m_exportWidth; x += tileSize) {
+        // execute 1 pass, then return control immediately back to system window manager loop
+        gl43->glDispatchCompute(groups_x, groups_y, 1);
+        gl43->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glUseProgram(0);
 
-                    int currentTileWidth = std::min(tileSize, m_exportWidth - x);
-                    int currentTileHeight = std::min(tileSize, m_exportHeight - y);
+        m_exportPassCount++;
+        qDebug() << "Buddhabrot High-Res Export Pass Progress:" << m_exportPassCount << "/" << m_maxExportPasses;
 
-                    // resize to tile's size
-                    glViewport(0, 0, currentTileWidth, currentTileHeight);
-                    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-                    glClear(GL_COLOR_BUFFER_BIT);
+        // keep pushing updates until we collect all samples
+        if (m_exportPassCount < m_maxExportPasses) {
+            update();
+        }
+        // final comp and writing
+        else {
+            m_isExportingBuddhabrot = false;
 
-                    // flip y if needed
-                    GLfloat tileVertices[] = {
-                        -1.0f, -1.0f, 0.0f,
-                        1.0f, -1.0f, 0.0f,
-                        -1.0f,  1.0f, 0.0f,
+            if (m_exportFbo->bind()) {
+                glViewport(0, 0, m_exportWidth, m_exportHeight);
+                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT);
 
-                        -1.0f,  1.0f, 0.0f,
-                        1.0f, -1.0f, 0.0f,
-                        1.0f,  1.0f, 0.0f,
-                    };
+                m_program->bind();
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, m_exportAccumulationTex);
+                m_program->setUniformValue("u_accumulation_sampler", 0);
 
-                    // calculate render aspect ratio
-                    float exportAspect = (float)m_exportWidth / (float)m_exportHeight;
-                    float expScaleX = 1.0f;
-                    float expScaleY = 1.0f;
+                m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
+                m_program->setUniformValue("u_fractal_type", m_fractalType);
+                m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
+                m_program->setUniformValueArray("u_gradient_colors", colors, 4);
+                m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
 
-                    if (m_exportWidth >= m_exportHeight) {
-                        // landscape
-                        expScaleX = 1.0f;
-                        expScaleY = 1.0f / exportAspect;
-                    } else {
-                        // portrait
-                        expScaleX = exportAspect;
-                        expScaleY = 1.0f;
-                    }
+                m_program->enableAttributeArray(0);
+                m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+                m_program->disableAttributeArray(0);
+                m_program->release();
 
-                    // map the x dimension
-                    float xStart = -expScaleX + 2.0f * expScaleX * (float)x / m_exportWidth;
-                    float xEnd   = -expScaleX + 2.0f * expScaleX * (float)(x + currentTileWidth) / m_exportWidth;
+                glFlush();
 
-                    float openGLYTop    = m_exportHeight - y;
-                    float openGLYBottom = m_exportHeight - (y + currentTileHeight);
-
-                    float yStart = -expScaleY + 2.0f * expScaleY * (openGLYBottom / m_exportHeight);
-                    float yEnd   = -expScaleY + 2.0f * expScaleY * (openGLYTop / m_exportHeight);
-
-                    m_program->setUniformValue("u_tile_bounds", QVector4D(xStart, yStart, xEnd, yEnd));
-
-                    // re-bind double uniform camera stuff
-                    int expZoomLevel = m_program->uniformLocation("u_zoom_level");
-                    int expZoomCenter = m_program->uniformLocation("u_zoom_center");
-                    int expJuliaC = m_program->uniformLocation("u_julia_c");
-
-                    if (expZoomLevel != -1)  this->glUniform1d(expZoomLevel, m_targetZoom);
-                    if (expZoomCenter != -1) this->glUniform2d(expZoomCenter, m_targetCenterX, m_targetCenterY);
-                    if (expJuliaC != -1)     this->glUniform2d(expJuliaC, static_cast<double>(m_juliaC.x()), static_cast<double>(m_juliaC.y()));
-
-                    // render the tile
-                    m_program->enableAttributeArray(0);
-                    m_program->setAttributeArray(0, GL_FLOAT, tileVertices, 3);
-                    glDrawArrays(GL_TRIANGLES, 0, 6);
-                    m_program->disableAttributeArray(0);
-
-                    // flush commands
-                    glFlush();
-
-                    int openGLYSource = tileSize - currentTileHeight;
-                    QImage tileImage = tileFbo.toImage().copy(0, openGLYSource, currentTileWidth, currentTileHeight);
-
-                    // mirror vertically
-                    tileImage = tileImage.flipped(Qt::Vertical);
-
-                    int canvasYDestination = m_exportHeight - y - currentTileHeight;
-
-                    // stitch tile into master image
-                    painter.drawImage(x, canvasYDestination, tileImage);
+                QImage masterImage = m_exportFbo->toImage().flipped(Qt::Vertical);
+                if (masterImage.save(m_exportFilename)) {
+                    qDebug() << "COMPLETED HIGH-RES EXPORT FILE:" << m_exportFilename;
+                } else {
+                    qWarning() << "Failed to save file out to disk path.";
                 }
+
+                m_exportFbo->release();
             }
 
-            painter.end();
+            // deallocate assets
+            glDeleteTextures(1, &m_exportAccumulationTex);
+            m_exportAccumulationTex = 0;
+            delete m_exportFbo;
+            m_exportFbo = nullptr;
 
-            m_program->release();
-            tileFbo.release();
-
-            // save the master image
-            if (masterImage.save(m_exportFilename)) {
-                qDebug() << "successfully rendered:" << m_exportFilename;
-            } else {
-                qWarning() << "failed to render image";
-            }
-
-            // restore viewport
+            // reset viewport
             glViewport(0, 0, width, height);
         }
     }

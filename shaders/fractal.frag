@@ -20,6 +20,8 @@ uniform vec4 u_tile_bounds;
 
 uniform int u_aaSamples;
 
+uniform usampler2D u_accumulation_sampler;
+
 // anti aliasing color calc
 vec3 evaluateFractal(vec2 custom_v_coord) {
     // normalize aspect ratio
@@ -160,8 +162,37 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
 }
 
 void main() {
-    // anti aliasing mode: 1 = none, 2 = 2x ssaa, 3 = 3x ssaa
+    if (u_fractal_type == 4 || u_fractal_type == 5) {
+        // convert normalized coordinates into pixel coordinates
+        ivec2 tex_coord = ivec2(gl_FragCoord.xy);
 
+        uint hits = texelFetch(u_accumulation_sampler, tex_coord, 0).r;
+
+        if (hits == 0u) {
+            FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            return;
+        }
+
+        // adjust exposure
+        float exposure = 2000000.0;
+        float normalizedHits = log(float(hits) + 1.0) / log(exposure);
+
+        // map normalized scalar to gradient
+        float t = clamp(normalizedHits, 0.0, 1.0);
+        vec3 color = u_gradient_colors[0];
+        for (int i = 0; i < 3; i++) {
+            if (t >= u_gradient_stops[i] && t <= u_gradient_stops[i+1]) {
+                float factor = (t - u_gradient_stops[i]) / (u_gradient_stops[i+1] - u_gradient_stops[i]);
+                color = mix(u_gradient_colors[i], u_gradient_colors[i+1], factor);
+                break;
+            }
+        }
+
+        FragColor= vec4(color, 1.0);
+        return;
+    }
+
+    // anti aliasing mode: 1 = none, 2 = 2x ssaa, 3 = 3x ssaa
     if (u_aaSamples <= 1) {
         // no aa
         FragColor = vec4(evaluateFractal(v_coord), 1.0);
@@ -176,8 +207,8 @@ void main() {
             for (int x = 0; x < u_aaSamples; x++) {
                 // calc fractional offsets within the pixel
                 vec2 offset = vec2(
-                    (float(x) + 0.5) / float(u_aaSamples) - 0.5,
-                    (float(y) + 0.5) / float(u_aaSamples) - 0.5
+                        (float(x) + 0.5) / float(u_aaSamples) - 0.5,
+                        (float(y) + 0.5) / float(u_aaSamples) - 0.5
                 );
 
                 // shift vertex input coord
