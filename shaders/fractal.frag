@@ -162,7 +162,7 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
 }
 
 void main() {
-    if (u_fractal_type == 4 || u_fractal_type == 5) {
+    if (u_fractal_type == 4 || u_fractal_type == 5 || u_fractal_type == 6) {
         // convert normalized coordinates into pixel coordinates
         ivec2 tex_coord = ivec2(gl_FragCoord.xy);
 

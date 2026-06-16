@@ -125,7 +125,7 @@ Window {
 
                 ComboBox {
                     id: typeSelector
-                    model: ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot"]
+                    model: ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
                     Layout.fillWidth: true
 
                     function applyDefaultView() {
@@ -153,6 +153,10 @@ Window {
                             case 5: // anti-buddhabrot
                                 engine.zoomLevel = 2.0
                                 engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
+                                break;
+                            case 6: // barnsley fern
+                                engine.zoomLevel = 2.0
+                                engine.zoomCenter = Qt.vector2d(0.0, 0.0)
                                 break;
                         }
                     }

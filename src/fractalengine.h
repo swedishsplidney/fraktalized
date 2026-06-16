@@ -16,6 +16,7 @@
 #include <QFile>
 #include <QStandardPaths>
 #include <QDir>
+#include <QColor>
 
 // handles the actual GPU rendering work inside an isolated fbo texture canvas
 class FractalFBORenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_4_0_Core {
@@ -76,6 +77,7 @@ private:
 
     GLuint m_compute_program = 0;
     GLuint m_accumulation_texture = 0;
+    GLuint m_ifs_program = 0;
     int m_current_fbo_w = 0;
     int m_current_fbo_h = 0;
 

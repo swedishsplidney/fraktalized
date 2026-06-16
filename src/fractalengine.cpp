@@ -29,6 +29,7 @@ void FractalFBORenderer::init() {
     m_program->bindAttributeLocation("aPos", 0);
     m_program->link();
 
+    // trajectory engine
     QOpenGLShader *compShader = new QOpenGLShader(QOpenGLShader::Compute);
     if (compShader->compileSourceFile("shaders/trajectory.glsl")) {
         m_compute_program = glCreateProgram();
@@ -49,6 +50,27 @@ void FractalFBORenderer::init() {
         std::cout << "compute shader compilation failed!" << std::endl;
     }
     delete compShader;
+
+    // ifs engine
+    QOpenGLShader *ifsShader = new QOpenGLShader(QOpenGLShader::Compute);
+    if (ifsShader->compileSourceFile("shaders/ifs.glsl")) {
+        m_ifs_program = glCreateProgram();
+        glAttachShader(m_ifs_program, ifsShader->shaderId());
+        glLinkProgram(m_ifs_program);
+
+        GLint linkSuccess = 0;
+        glGetProgramiv(m_ifs_program, GL_LINK_STATUS, &linkSuccess);
+        if (!linkSuccess) {
+            char infoLog[512];
+            glGetProgramInfoLog(m_ifs_program, 512, nullptr, infoLog);
+            std::cout << "ifs shader link error: " << infoLog << std::endl;
+        } else {
+            std::cout << "ifs shader link: ok" << std::endl;
+        }
+    } else {
+        std::cout << "ifs shader compilation failed!" << std::endl;
+    }
+    delete ifsShader;
 
     m_initialized = true;
 }
@@ -91,7 +113,7 @@ void FractalFBORenderer::render() {
     if (std::abs(m_targetCenterX - m_currentCenterX) < centerSnapLimit) m_currentCenterX = m_targetCenterX;
     if (std::abs(m_targetCenterY - m_currentCenterY) < centerSnapLimit) m_currentCenterY = m_targetCenterY;
 
-    if (m_currentZoom != m_targetZoom || m_currentCenterX != m_targetCenterX || m_currentCenterY != m_targetCenterY || m_fractalType == 4 || m_fractalType == 5) {
+    if (m_currentZoom != m_targetZoom || m_currentCenterX != m_targetCenterX || m_currentCenterY != m_targetCenterY || m_fractalType >= 4) {
         update();
     }
 
@@ -163,8 +185,8 @@ void FractalFBORenderer::render() {
         m_program->disableAttributeArray(0);
         m_program->release();
     }
-    // trajectory accumulation
-    else if (m_fractalType == 4 || m_fractalType == 5) {
+    // trajectory/ifs accumulation
+    else if (m_fractalType == 4 || m_fractalType == 5 || m_fractalType == 6) {
         QOpenGLContext *currentContext = QOpenGLContext::currentContext();
         auto *gl43 = currentContext ? QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_4_3_Core>(currentContext) : nullptr;
 
@@ -201,33 +223,51 @@ void FractalFBORenderer::render() {
         }
 
         // clear accumulation buffers if camera changes
-        static double lastTargetX = 0;
-        static double lastTargetY = 0;
-        static double lastTargetZoom = 0;
+        static double lastCurrentX = 0;
+        static double lastCurrentY = 0;
+        static double lastCurrentZoom = 0;
+        static int lastType = 0;
 
-        if (m_targetCenterX != lastTargetX || m_targetCenterY != lastTargetY || m_targetZoom != lastTargetZoom) {
+        if (m_currentCenterX != lastCurrentX || m_currentCenterY != lastCurrentY || m_currentZoom != lastCurrentZoom || m_fractalType != lastType) {
             std::vector<uint32_t> zeroData(width * height, 0u);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_INT, zeroData.data());
 
-            lastTargetX = m_targetCenterX;
-            lastTargetY = m_targetCenterY;
-            lastTargetZoom = m_targetZoom;
+            lastCurrentX = m_currentCenterX;
+            lastCurrentY = m_currentCenterY;
+            lastCurrentZoom = m_currentZoom;
+            lastType = m_fractalType;
         }
 
         // bind image to unit 0
         gl43->glBindImageTexture(0, m_accumulation_texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
-        // compute workers
-        glUseProgram(m_compute_program);
-        glUniform2d(glGetUniformLocation(m_compute_program, "u_zoom_center"), m_currentCenterX, m_currentCenterY);
-        glUniform1d(glGetUniformLocation(m_compute_program, "u_zoom_level"), m_currentZoom);
-        glUniform1f(glGetUniformLocation(m_compute_program, "u_max_iter"), static_cast<float>(m_maxIterations));
-        glUniform2f(glGetUniformLocation(m_compute_program, "u_resolution"), static_cast<float>(width), static_cast<float>(height));
-        glUniform1i(glGetUniformLocation(m_compute_program, "u_fractal_type"), m_fractalType);
+        GLuint activeComputeProg = (m_fractalType >= 6) ? m_ifs_program : m_compute_program;
 
-        GLuint groups_x = (width + 15) / 16;
-        GLuint groups_y = (height + 15) / 16;
-        gl43->glDispatchCompute(groups_x, groups_y, 1);
+        // compute workers
+        glUseProgram(activeComputeProg);
+        glUniform2d(glGetUniformLocation(activeComputeProg, "u_zoom_center"), m_currentCenterX, m_currentCenterY);
+        glUniform1d(glGetUniformLocation(activeComputeProg, "u_zoom_level"), m_currentZoom);
+        glUniform2f(glGetUniformLocation(activeComputeProg, "u_resolution"), static_cast<float>(width), static_cast<float>(height));
+        glUniform1i(glGetUniformLocation(activeComputeProg, "u_fractal_type"), m_fractalType);
+
+        // only trajectory shader needs max_iter
+        if (m_fractalType <= 6) {
+            glUniform1f(glGetUniformLocation(activeComputeProg, "u_max_iter"), static_cast<float>(m_maxIterations));
+        }
+
+        if (m_fractalType >= 6) {
+            double baseWorkers = 20000.0;
+
+            int totalWorkers = static_cast<int>(std::clamp(baseWorkers * (2.0 / m_currentZoom), baseWorkers, 300000.0));
+
+            GLuint groups_x = (totalWorkers + 255) / 256;
+
+            gl43->glDispatchCompute(groups_x, 1, 1);
+        } else {
+            GLuint groups_x = (width + 15) / 16;
+            GLuint groups_y = (height + 15) / 16;
+            gl43->glDispatchCompute(groups_x, groups_y, 1);
+        }
 
         // wait until atomic stores finish
         gl43->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
@@ -260,12 +300,12 @@ void FractalFBORenderer::render() {
         QOpenGLContext *currentContext = QOpenGLContext::currentContext();
         auto *gl43 = currentContext ? QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_4_3_Core>(currentContext) : nullptr;
 
-        if ((m_fractalType == 4 || m_fractalType == 5) && !gl43) {
-            qWarning() << "Cannot export Buddhabrot: OpenGL 4.3 functions unavailable.";
+        if ((m_fractalType == 4 || m_fractalType == 5 || m_fractalType == 6) && !gl43) {
+            qWarning() << "cannot export accumulation fractal: OpenGL 4.3 functions unavailable.";
             return;
         }
 
-        qDebug() << "Initializing high-res render sequence:" << m_exportWidth << "x" << m_exportHeight;
+        qDebug() << "initializing high-res render sequence:" << m_exportWidth << "x" << m_exportHeight;
 
         // setup the high res fbo buffer layout
         QOpenGLFramebufferObjectFormat exportFormat;
@@ -273,7 +313,7 @@ void FractalFBORenderer::render() {
         exportFormat.setInternalTextureFormat(GL_RGBA8);
         m_exportFbo = new QOpenGLFramebufferObject(m_exportWidth, m_exportHeight, exportFormat);
 
-        if (m_fractalType == 4 || m_fractalType == 5) {
+        if (m_fractalType == 4 || m_fractalType == 5 || m_fractalType == 6) {
             // allocate giant high res texture storage unit
             glGenTextures(1, &m_exportAccumulationTex);
             glBindTexture(GL_TEXTURE_2D, m_exportAccumulationTex);
@@ -318,7 +358,7 @@ void FractalFBORenderer::render() {
                 m_exportFbo->release();
                 delete m_exportFbo;
                 m_exportFbo = nullptr;
-                qDebug() << "Saved standard high-res image successfully.";
+                qDebug() << "saved standard high-res image successfully.";
             }
         }
     }
@@ -328,13 +368,18 @@ void FractalFBORenderer::render() {
         QOpenGLContext *currentContext = QOpenGLContext::currentContext();
         auto *gl43 = currentContext ? QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_4_3_Core>(currentContext) : nullptr;
 
+        GLuint activeComputeProg = (m_fractalType >= 6) ? m_ifs_program : m_compute_program;
+
         // process 1 calculation step per frame context update
-        glUseProgram(m_compute_program);
-        glUniform2d(glGetUniformLocation(m_compute_program, "u_zoom_center"), m_targetCenterX, m_targetCenterY);
-        glUniform1d(glGetUniformLocation(m_compute_program, "u_zoom_level"), m_targetZoom);
-        glUniform1f(glGetUniformLocation(m_compute_program, "u_max_iter"), static_cast<float>(m_maxIterations));
-        glUniform2f(glGetUniformLocation(m_compute_program, "u_resolution"), static_cast<float>(m_exportWidth), static_cast<float>(m_exportHeight));
-        glUniform1i(glGetUniformLocation(m_compute_program, "u_fractal_type"), m_fractalType);
+        glUseProgram(activeComputeProg);
+        glUniform2d(glGetUniformLocation(activeComputeProg, "u_zoom_center"), m_targetCenterX, m_targetCenterY);
+        glUniform1d(glGetUniformLocation(activeComputeProg, "u_zoom_level"), m_targetZoom);
+        glUniform2f(glGetUniformLocation(activeComputeProg, "u_resolution"), static_cast<float>(m_exportWidth), static_cast<float>(m_exportHeight));
+        glUniform1i(glGetUniformLocation(activeComputeProg, "u_fractal_type"), m_fractalType);
+
+        if (m_fractalType <= 6) {
+            glUniform1f(glGetUniformLocation(activeComputeProg, "u_max_iter"), static_cast<float>(m_maxIterations));
+        }
 
         gl43->glBindImageTexture(0, m_exportAccumulationTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
@@ -347,7 +392,7 @@ void FractalFBORenderer::render() {
         glUseProgram(0);
 
         m_exportPassCount++;
-        qDebug() << "Buddhabrot High-Res Export Pass Progress:" << m_exportPassCount << "/" << m_maxExportPasses;
+        qDebug() << "compute export progress:" << m_exportPassCount << "/" << m_maxExportPasses;
 
         // keep pushing updates until we collect all samples
         if (m_exportPassCount < m_maxExportPasses) {
@@ -383,9 +428,9 @@ void FractalFBORenderer::render() {
 
                 QImage masterImage = m_exportFbo->toImage().flipped(Qt::Vertical);
                 if (masterImage.save(m_exportFilename)) {
-                    qDebug() << "COMPLETED HIGH-RES EXPORT FILE:" << m_exportFilename;
+                    qDebug() << "completed export:" << m_exportFilename;
                 } else {
-                    qWarning() << "Failed to save file out to disk path.";
+                    qWarning() << "failed to save file to disk path.";
                 }
 
                 m_exportFbo->release();
