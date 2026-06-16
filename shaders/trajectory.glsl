@@ -62,6 +62,16 @@ void main() {
         }
 
         dvec2 c_start = dvec2(normalized) * u_zoom_level + u_zoom_center;
+
+        // optimization for anti-buddhabrot
+        double q = (c_start.x - 0.25) * (c_start.x - 0.25) + c_start.y * c_start.y;
+        bool in_main_cardioid = q * (q + (c_start.x - 0.25)) < 0.25 * c_start.y * c_start.y;
+        bool in_period2_bulb = (c_start.x + 1.0) * (c_start.x + 1.0) + c_start.y * c_start.y < 0.0625;
+
+        if (u_fractal_type == 5 && (in_main_cardioid || in_period2_bulb)) {
+            continue;
+        }
+
         dvec2 z = dvec2(0.0, 0.0);
 
         // check if point escapes
@@ -80,10 +90,22 @@ void main() {
             }
         }
 
-        if (escapes && escape_iterations > 50) {
+        // determine render mode
+        bool should_plot = false;
+        int loop_limit = 0;
+
+        if (u_fractal_type == 4 && escapes && escape_iterations > 50) {
+            should_plot = true;
+            loop_limit = escape_iterations;
+        } else if (u_fractal_type == 5 && !escapes) {
+            should_plot = true;
+            loop_limit = int(u_max_iter);
+        }
+
+        if (should_plot) {
             z = dvec2(0.0, 0.0);
 
-            for (int i = 0; i < escape_iterations; i++) {
+            for (int i = 0; i < loop_limit; i++) {
                 double x_next = z.x * z.x - z.y * z.y + c_start.x;
                 double y_next = 2.0 * z.x * z.y + c_start.y;
                 z = dvec2(x_next, y_next);

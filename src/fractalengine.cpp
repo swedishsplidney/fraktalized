@@ -91,7 +91,7 @@ void FractalFBORenderer::render() {
     if (std::abs(m_targetCenterX - m_currentCenterX) < centerSnapLimit) m_currentCenterX = m_targetCenterX;
     if (std::abs(m_targetCenterY - m_currentCenterY) < centerSnapLimit) m_currentCenterY = m_targetCenterY;
 
-    if (m_currentZoom != m_targetZoom || m_currentCenterX != m_targetCenterX || m_currentCenterY != m_targetCenterY || m_fractalType == 4) {
+    if (m_currentZoom != m_targetZoom || m_currentCenterX != m_targetCenterX || m_currentCenterY != m_targetCenterY || m_fractalType == 4 || m_fractalType == 5) {
         update();
     }
 
@@ -164,7 +164,7 @@ void FractalFBORenderer::render() {
         m_program->release();
     }
     // trajectory accumulation
-    else if (m_fractalType == 4) {
+    else if (m_fractalType == 4 || m_fractalType == 5) {
         QOpenGLContext *currentContext = QOpenGLContext::currentContext();
         auto *gl43 = currentContext ? QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_4_3_Core>(currentContext) : nullptr;
 
@@ -260,7 +260,7 @@ void FractalFBORenderer::render() {
         QOpenGLContext *currentContext = QOpenGLContext::currentContext();
         auto *gl43 = currentContext ? QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_4_3_Core>(currentContext) : nullptr;
 
-        if (m_fractalType == 4 && !gl43) {
+        if ((m_fractalType == 4 || m_fractalType == 5) && !gl43) {
             qWarning() << "Cannot export Buddhabrot: OpenGL 4.3 functions unavailable.";
             return;
         }
@@ -273,7 +273,7 @@ void FractalFBORenderer::render() {
         exportFormat.setInternalTextureFormat(GL_RGBA8);
         m_exportFbo = new QOpenGLFramebufferObject(m_exportWidth, m_exportHeight, exportFormat);
 
-        if (m_fractalType == 4) {
+        if (m_fractalType == 4 || m_fractalType == 5) {
             // allocate giant high res texture storage unit
             glGenTextures(1, &m_exportAccumulationTex);
             glBindTexture(GL_TEXTURE_2D, m_exportAccumulationTex);
