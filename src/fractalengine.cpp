@@ -228,7 +228,12 @@ void FractalFBORenderer::render() {
         static double lastCurrentZoom = 0;
         static int lastType = 0;
 
-        if (m_currentCenterX != lastCurrentX || m_currentCenterY != lastCurrentY || m_currentZoom != lastCurrentZoom || m_fractalType != lastType) {
+        bool cameraMoved = (m_currentCenterX != lastCurrentX ||
+                            m_currentCenterY != lastCurrentY ||
+                            m_currentZoom != lastCurrentZoom ||
+                            m_fractalType != lastType);
+
+        if (cameraMoved) {
             std::vector<uint32_t> zeroData(width * height, 0u);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_INT, zeroData.data());
 
@@ -236,42 +241,50 @@ void FractalFBORenderer::render() {
             lastCurrentY = m_currentCenterY;
             lastCurrentZoom = m_currentZoom;
             lastType = m_fractalType;
+
+            m_viewPassCount = 0;
         }
 
-        // bind image to unit 0
-        gl43->glBindImageTexture(0, m_accumulation_texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+        int maxRealtimePasses = 1;
 
-        GLuint activeComputeProg = (m_fractalType >= 6) ? m_ifs_program : m_compute_program;
+        if (m_viewPassCount < maxRealtimePasses) {
+            // bind image to unit 0
+            gl43->glBindImageTexture(0, m_accumulation_texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
-        // compute workers
-        glUseProgram(activeComputeProg);
-        glUniform2d(glGetUniformLocation(activeComputeProg, "u_zoom_center"), m_currentCenterX, m_currentCenterY);
-        glUniform1d(glGetUniformLocation(activeComputeProg, "u_zoom_level"), m_currentZoom);
-        glUniform2f(glGetUniformLocation(activeComputeProg, "u_resolution"), static_cast<float>(width), static_cast<float>(height));
-        glUniform1i(glGetUniformLocation(activeComputeProg, "u_fractal_type"), m_fractalType);
+            GLuint activeComputeProg = (m_fractalType >= 6) ? m_ifs_program : m_compute_program;
 
-        // only trajectory shader needs max_iter
-        if (m_fractalType <= 6) {
-            glUniform1f(glGetUniformLocation(activeComputeProg, "u_max_iter"), static_cast<float>(m_maxIterations));
+            // compute workers
+            glUseProgram(activeComputeProg);
+            glUniform2d(glGetUniformLocation(activeComputeProg, "u_zoom_center"), m_currentCenterX, m_currentCenterY);
+            glUniform1d(glGetUniformLocation(activeComputeProg, "u_zoom_level"), m_currentZoom);
+            glUniform2f(glGetUniformLocation(activeComputeProg, "u_resolution"), static_cast<float>(width), static_cast<float>(height));
+            glUniform1i(glGetUniformLocation(activeComputeProg, "u_fractal_type"), m_fractalType);
+
+            if (m_fractalType <= 6) {
+                glUniform1f(glGetUniformLocation(activeComputeProg, "u_max_iter"), static_cast<float>(m_maxIterations));
+            }
+
+            if (m_fractalType >= 6) {
+                double totalWorkers = 100000.0;
+                GLuint groups_x = (totalWorkers + 255) / 256;
+                gl43->glDispatchCompute(groups_x, 1, 1);
+            } else {
+                GLuint groups_x = (width + 15) / 16;
+                GLuint groups_y = (height + 15) / 16;
+                gl43->glDispatchCompute(groups_x, groups_y, 1);
+            }
+
+            // wait until atomic stores finish
+            gl43->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+            glUseProgram(0);
+
+            m_viewPassCount++;
+
+            // only trigger a new update if still need to fulfill passes
+            if (m_viewPassCount < maxRealtimePasses) {
+                update();
+            }
         }
-
-        if (m_fractalType >= 6) {
-            double baseWorkers = 20000.0;
-
-            int totalWorkers = static_cast<int>(std::clamp(baseWorkers * (2.0 / m_currentZoom), baseWorkers, 300000.0));
-
-            GLuint groups_x = (totalWorkers + 255) / 256;
-
-            gl43->glDispatchCompute(groups_x, 1, 1);
-        } else {
-            GLuint groups_x = (width + 15) / 16;
-            GLuint groups_y = (height + 15) / 16;
-            gl43->glDispatchCompute(groups_x, groups_y, 1);
-        }
-
-        // wait until atomic stores finish
-        gl43->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-        glUseProgram(0);
 
         m_program->bind();
         glActiveTexture(GL_TEXTURE0);
@@ -383,11 +396,19 @@ void FractalFBORenderer::render() {
 
         gl43->glBindImageTexture(0, m_exportAccumulationTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
-        GLuint groups_x = (m_exportWidth + 15) / 16;
-        GLuint groups_y = (m_exportHeight + 15) / 16;
+        if (m_fractalType >= 6) {
+            int totalWorkers = 200000;
+            GLuint groups_x = (totalWorkers + 255) / 256;
+            gl43->glDispatchCompute(groups_x, 1, 1);
+        } else {
+            GLuint groups_x = (m_exportWidth + 15) / 16;
+            GLuint groups_y = (m_exportHeight + 15) / 16;
 
-        // execute 1 pass, then return control immediately back to system window manager loop
-        gl43->glDispatchCompute(groups_x, groups_y, 1);
+            // execute 1 pass, then return control immediately back to system window manager loop
+            gl43->glDispatchCompute(groups_x, groups_y, 1);
+        }
+
+
         gl43->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         glUseProgram(0);
 

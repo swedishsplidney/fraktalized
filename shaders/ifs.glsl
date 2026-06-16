@@ -10,33 +10,40 @@ uniform double u_zoom_level;
 uniform int u_fractal_type;
 
 // deterministic hash
-uint hash(uint x) {
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
-    x = (x >> 16) ^ x;
-    return x;
+uint pcg_hash(uint src) {
+    uint state = src * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
 }
 
 // lcg random generator
-float nextRandom(inout uint seed) {
-    seed = seed * 1103515245u + 12345u;
-    return float(seed & 0x7FFFFFFFu) / 2147483647.0;
+double nextRandomDouble(inout uint seed) {
+    seed = pcg_hash(seed);
+    double part1 = double(seed & 0x1FFFFFu) / 2097152.0;
+
+    seed = pcg_hash(seed);
+    double part2 = double(seed) / 429467296.0;
+
+    return part1 + (part2 / 2097152.0);
 }
 
 void main() {
     uint global_id = gl_GlobalInvocationID.x;
-
-    if (global_id >= 50000) return;
+    if (global_id >= 200000) return;
 
     // base seed per invocation
-    uint seed = hash(global_id + uint(u_zoom_center.x * 1000.0));
+    uint hash_x = pcg_hash(uint(abs(u_zoom_center.x) * 1000000.0));
+    uint hash_y = pcg_hash(uint(abs(u_zoom_center.y) * 1000000.0));
+    uint hash_z = pcg_hash(uint(u_zoom_level * 10000000.0));
+
+    uint seed = pcg_hash(global_id + hash_x ^ hash_y ^ hash_z);
 
     // start at 0, 0
     dvec2 p = dvec2(0.0, 0.0);
 
     // get away from the origin
-    for(int i = 0; i < 20; i++) {
-        float r = nextRandom(seed);
+    for(int i = 0; i < 30; i++) {
+        double r = nextRandomDouble(seed);
         dvec2 next_p;
         if (r < 0.01) {
             next_p.x = 0.0;
@@ -54,7 +61,8 @@ void main() {
         p = next_p;
     }
 
-    int steps_per_thread = 200;
+    double inverseZoomSq = 1.0 / (u_zoom_level * u_zoom_level);
+    int steps_per_thread = int(clamp(1000.0 * inverseZoomSq, 1000.0, 100000.0));
 
     // camera and screen mapping
     float screenAspect = u_resolution.x / u_resolution.y;
@@ -71,7 +79,7 @@ void main() {
 
     // main drawing loop
     for(int i = 0;  i < steps_per_thread; i++) {
-        float r = nextRandom(seed);
+        double r = nextRandomDouble(seed);
         dvec2 next_p;
         if (r < 0.01) {
             // stem
@@ -92,11 +100,17 @@ void main() {
         }
         p = next_p;
 
-        dvec2 screen_space = (p - u_zoom_center) / u_zoom_level;
+        dvec2 local_center = dvec2(u_zoom_center.x, -u_zoom_center.y);
+
+        dvec2 screen_space = (p - local_center) / u_zoom_level;
         screen_space.x /= scaleX;
         screen_space.y /= scaleY;
 
+        // convert to vec2 uv space
         vec2 final_uv = vec2(screen_space) * 0.5 + vec2(0.5);
+
+        final_uv.y = 1.0 - final_uv.y;
+
         ivec2 write_pos = ivec2(final_uv * u_resolution);
 
         // point to texture

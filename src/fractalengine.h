@@ -90,6 +90,9 @@ private:
     GLuint m_exportAccumulationTex = 0;
     QOpenGLFramebufferObject* m_exportFbo = nullptr;
 
+    int m_viewPassCount = 0;
+    const int m_maxViewPasses = 10;
+
     void init();
 };
 

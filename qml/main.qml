@@ -155,8 +155,8 @@ Window {
                                 engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
                                 break;
                             case 6: // barnsley fern
-                                engine.zoomLevel = 2.0
-                                engine.zoomCenter = Qt.vector2d(0.0, 0.0)
+                                engine.zoomLevel = 9.0
+                                engine.zoomCenter = Qt.vector2d(0.0, -5.0)
                                 break;
                         }
                     }
