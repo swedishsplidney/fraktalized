@@ -29,12 +29,15 @@ controls a high-performance fragment shader inside a framebuffer object.
 
 ## available fractals:
 
-fraktalized currently has 4 fractal sets:
+fraktalized currently has 7 fractal sets:
 
 * **mandelbrot set:** the classic fractal set
 * **julia set:** cool swirly stuff, complete with adjustable constant coords
 * **burning ship set:** cool pointy stuff
 * **newton set:** kinda spidery looking
+* **buddhabrot:** like the mandelbrot but galaxy looking
+* **anti-buddhabrot:** reverse buddhabrot
+* **barnsley fern:** looks very naturey
 
 ---
 
