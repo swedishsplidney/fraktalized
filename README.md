@@ -9,6 +9,8 @@
 an open-source, cross-platform ultra smooth real time fractal explorer
 built using a hybrid architecture of Qt6 (QML/C++) and openGL (GLSL 330 core / 4.3 compute shaders).
 
+![demo ss](images/application_screenshot.png)
+
 fraktalized uses a split-threaded system where a floating sidebar interface
 controls a high-performance fragment shader inside a dedicated framebuffer object running off of
 fragment `.frag`/`.vert`, and compute `.glsl` shader files.
