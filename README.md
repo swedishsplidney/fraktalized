@@ -56,23 +56,37 @@ fraktalized currently has 3 fractal types:
 ![mandelbrot](images/render_20260614_180911.png)
 *above: mandelbrot fractal set, blue (3840x2160)*
 
+ 
+
 ![julia](images/render_20260614_181131.png)
 *above: julia fractal set, -0.8 + 0.156i, purple (3840x2160)*
+
+ 
 
 ![burning ship](images/render_20260613_014651.png)
 *above: burning ship fractal set, orange (3840x2160)*
 
+ 
+
 ![newton](images/render_20260614_181257.png)
 *above: newton fractal set, green (3840x2160)*
 
+ 
+
 ![buddhabrot](images/render_20260615_024739.png)
-*above: buddhabrot fractal set, purple (3840x2160)
+*above: buddhabrot fractal set, purple (3840x2160)*
+
+ 
 
 ![anti-buddhabrot](images/render_20260617_010217.png)
 *above: anti-buddhabrot fractal set, indigo (3840x2160)*
 
+ 
+
 ![barnsley fern](images/render_20260617_010404.png)
 *above: barnsley fern fractal set, red (3840x2160)*
+
+ 
 
 ---
 
