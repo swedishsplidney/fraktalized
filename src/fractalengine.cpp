@@ -8,6 +8,12 @@
 
 FractalFBORenderer::FractalFBORenderer() {
     // constructor runs safely on the dedicated graphics render thread context loop
+    m_zoom3D = 3.0f;
+    m_targetZoom3D = 3.0f;
+    m_pan3D = QVector3D(0.0f, 0.0f, 0.0f);
+    m_targetPan3D = QVector3D(0.0f, 0.0f, 0.0f);
+    m_rotation3D = QQuaternion();
+    m_targetRotation3D = QQuaternion();
 }
 
 FractalFBORenderer::~FractalFBORenderer() {
@@ -389,6 +395,7 @@ void FractalFBORenderer::render() {
 
     // 3d render
     if (m_is3DMode) {
+        updateAnimations();
         m_3dProgram->bind();
 
         QVector3D bgColor = !m_gradientColors.isEmpty() ? m_gradientColors[0] : QVector3D(0.0f, 0.0f, 0.0f);
@@ -404,23 +411,15 @@ void FractalFBORenderer::render() {
 
         QMatrix4x4 projection;
         projection.setToIdentity();
-        projection.setRow(0, QVector4D(f / aspect, 0.0f, 0.0f, 0.0f));
-        projection.setRow(1, QVector4D(0.0f, f, 0.0f, 0.0f));
-        projection.setRow(2, QVector4D(0.0f, 0.0f, (farPlane + nearPlane) / (nearPlane - farPlane), (2.0f * farPlane * nearPlane) / (nearPlane - farPlane)));
-        projection.setRow(3, QVector4D(0.0f, 0.0f, -1.0f, 0.0f));
+        projection.perspective(45.0f, (float)width / (float)height, 0.0f, 100.0f);
 
         QMatrix4x4 view;
         view.setToIdentity();
-        view.setRow(2, QVector4D(0.0f, 0.0f, 1.0f, -3.0f));
-
-        m_rotationAngle += 0.01f;
-        float cosA = cos(m_rotationAngle);
-        float sinA = sin(m_rotationAngle);
+        view.translate(m_pan3D.x(), m_pan3D.y(), -m_zoom3D);
 
         QMatrix4x4 model;
         model.setToIdentity();
-        model.setRow(0, QVector4D(cosA,  0.0f, sinA, 0.0f));
-        model.setRow(2, QVector4D(-sinA, 0.0f, cosA, 0.0f));
+        model.rotate(this->m_rotation3D);
 
         m_3dProgram->setUniformValue("u_model", model);
         m_3dProgram->setUniformValue("u_view", view);
@@ -597,6 +596,40 @@ void FractalFBORenderer::render() {
     }
 }
 
+// 3d lerping
+void FractalFBORenderer::updateAnimations() {
+    bool needsMoreUpdates = false;
+
+    // zoom lerp
+    if (std::abs(m_zoom3D - m_targetZoom3D) > 0.001f) {
+        m_zoom3D = m_zoom3D + m_lerpFactor * (m_targetZoom3D - m_zoom3D);
+        needsMoreUpdates = true;
+    } else {
+        m_zoom3D = m_targetZoom3D;
+    }
+
+    // pan lerp
+    if ((m_pan3D - m_targetPan3D).lengthSquared() > 0.00001f) {
+        m_pan3D = m_pan3D + m_lerpFactor * (m_targetPan3D - m_pan3D);
+        needsMoreUpdates = true;
+    } else {
+        m_pan3D = m_targetPan3D;
+    }
+
+    // rotation slerp
+    if (QQuaternion::dotProduct(m_rotation3D, m_targetRotation3D) < 0.9999f) {
+        m_rotation3D = QQuaternion::slerp(m_rotation3D, m_targetRotation3D, m_lerpFactor);
+        m_rotation3D.normalize();
+        needsMoreUpdates = true;
+    } else {
+        m_rotation3D = m_targetRotation3D;
+    }
+
+    if (needsMoreUpdates) {
+        update();
+    }
+}
+
 // fractalengine implementation
 
 FractalEngine::FractalEngine() : m_viewportScale(1.0f) {
@@ -662,6 +695,10 @@ void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
     auto *engine = static_cast<FractalEngine *>(item);
 
     this->m_is3DMode = engine->is3DMode();
+
+    this->m_targetRotation3D = engine->rotation3D();
+    this->m_targetPan3D = engine->pan3D();
+    this->m_targetZoom3D = engine->zoom3D();
 
     this->setMaxIterations(engine->maxIterations());
 

@@ -44,43 +44,69 @@ Window {
             onPositionChanged: (mouse) => {
                 if (width <= 0 || height <= 0) return;
 
-                let pctX = mouse.x / width
-                let pctY = mouse.y / height
+                // 3d stuff
+                if (engine.is3DMode) {
+                    if (mouse.buttons & Qt.LeftButton) {
+                        let dx = mouse.x - lastPos.x
+                        let dy = mouse.y - lastPos.y
+                        let isShift = (mouse.modifiers & Qt.ShiftModifier)
 
-                let screenAspect = width / height
-                let scaleX = 1.0
-                let scaleY = 1.0
-
-                if (width >= height) {
-                    scaleX = 1.0
-                    scaleY = 1.0 / screenAspect
+                        if (isShift) {
+                            // panning
+                            engine.handle3DDrag(dx, dy, true)
+                        } else {
+                            // rotate
+                            engine.handle3DDrag(dx, dy, false)
+                        }
+                        lastPos = Qt.point(mouse.x, mouse.y)
+                    }
                 } else {
-                    scaleX = screenAspect
-                    scaleY = 1.0
-                }
+                    let pctX = mouse.x / width
+                    let pctY = mouse.y / height
 
-                let currentX = engine.zoomCenter.x + (pctX * 2.0 - 1.0) * (scaleX * engine.zoomLevel)
-                let currentY = engine.zoomCenter.y + (pctY * 2.0 - 1.0) * (scaleY * engine.zoomLevel)
+                    let screenAspect = width / height
+                    let scaleX = 1.0
+                    let scaleY = 1.0
 
-                cursorX = currentX
-                cursorY = currentY
+                    if (width >= height) {
+                        scaleX = 1.0
+                        scaleY = 1.0 / screenAspect
+                    } else {
+                        scaleX = screenAspect
+                        scaleY = 1.0
+                    }
 
-                if (mouse.buttons & Qt.LeftButton) {
-                    var dx = mouse.x - lastPos.x
-                    var dy = mouse.y - lastPos.y
-                    engine.panCamera(dx, dy, parent.width, parent.height)
-                    lastPos = Qt.point(mouse.x, mouse.y)
+                    let currentX = engine.zoomCenter.x + (pctX * 2.0 - 1.0) * (scaleX * engine.zoomLevel)
+                    let currentY = engine.zoomCenter.y + (pctY * 2.0 - 1.0) * (scaleY * engine.zoomLevel)
+
+                    cursorX = currentX
+                    cursorY = currentY
+
+                    if (mouse.buttons & Qt.LeftButton) {
+                        var dx = mouse.x - lastPos.x
+                        var dy = mouse.y - lastPos.y
+                        engine.panCamera(dx, dy, parent.width, parent.height)
+                        lastPos = Qt.point(mouse.x, mouse.y)
+                    }
                 }
             }
 
             onWheel: (wheel) => {
-                var zoomFactor = 1.15
-                if (wheel.angleDelta.y > 0) {
-                    engine.zoomLevel /= zoomFactor
+                wheel.accepted = true;
+
+                if (engine.is3DMode) {
+                    let delta = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : wheel.pixelDelta.y * 4;
+
+                    engine.handle3DZoom(delta);
                 } else {
-                    engine.zoomLevel *= zoomFactor
+                    var zoomFactor = 1.15
+                    if (wheel.angleDelta.y > 0) {
+                        engine.zoomLevel /= zoomFactor
+                    } else {
+                        engine.zoomLevel *= zoomFactor
+                    }
+                    wheel.accepted = true
                 }
-                wheel.accepted = true
             }
         }
     }

@@ -20,6 +20,9 @@
 #include <QMatrix4x4>
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLBuffer>
+#include <QQuaternion>
+
+#include "fractalengine.h"
 
 // handles the actual GPU rendering work inside an isolated fbo texture canvas
 class FractalFBORenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_4_0_Core {
@@ -104,6 +107,17 @@ private:
 
     float m_rotationAngle = 0.0f;
 
+    QQuaternion m_rotation3D;
+    QVector3D m_pan3D = QVector3D(0.0f, 0.0f, 0.0f);
+    float m_zoom3D = 3.0f;
+
+    QQuaternion m_targetRotation3D = QQuaternion();
+    QVector3D m_targetPan3D = QVector3D(0.0f, 0.0f, 0.0f);
+    float m_targetZoom3D = 3.0f;
+    const float m_lerpFactor = 0.12f;
+
+    void updateAnimations();
+
     void init();
 };
 
@@ -132,8 +146,7 @@ class FractalEngine : public QQuickFramebufferObject {
     Q_PROPERTY(double currentMinY READ currentMinY NOTIFY boundsChanged)
     Q_PROPERTY(double currentMaxY READ currentMaxY NOTIFY boundsChanged)
 
-    Q_PROPERTY(float rotationX READ rotationX WRITE setRotationX NOTIFY rotation3DChanged)
-    Q_PROPERTY(float rotationY READ rotationY WRITE setRotationY NOTIFY rotation3DChanged)
+    Q_PROPERTY(QQuaternion rotation3D READ rotation3D WRITE setRotation3D NOTIFY rotation3DChanged)
     Q_PROPERTY(QVector3D pan3D READ pan3D WRITE setPan3D NOTIFY pan3DChanged)
     Q_PROPERTY(float zoom3D READ zoom3D WRITE setZoom3D NOTIFY zoom3DChanged)
 
@@ -271,7 +284,60 @@ public:
     Q_INVOKABLE void deletePreset(const QString &name);
 
     // 3d stuff
+    QVector3D pan3D() const { return m_targetPan3D; }
+    void setPan3D(const QVector3D &val) {
+        if (m_pan3D != val) {
+            m_pan3D = val;
+            emit pan3DChanged();
+            update();
+        }
+    }
 
+    float zoom3D() const { return m_targetZoom3D; }
+    void setZoom3D(float val) {
+        if (m_zoom3D != val) {
+            m_zoom3D = val;
+            emit zoom3DChanged();
+            update();
+        }
+    }
+
+    QQuaternion rotation3D() const { return m_targetRotation3D; }
+    void setRotation3D(const QQuaternion &val) {
+        if (m_rotation3D != val) {
+            m_rotation3D = val;
+            emit rotation3DChanged();
+            update();
+        }
+    }
+
+    Q_INVOKABLE void handle3DDrag(float dx, float dy, bool isShiftPressed) {
+        if (isShiftPressed) {
+            float speed = m_targetZoom3D * 0.00095f;
+            m_targetPan3D.setX(m_targetPan3D.x() + (dx * speed));
+            m_targetPan3D.setY(m_targetPan3D.y() + (dy * speed));
+        } else {
+            float rotationSpeed = (m_targetZoom3D / 3.0f) * 0.3f;
+            if (rotationSpeed < 0.02f) rotationSpeed = 0.02f;
+            if (rotationSpeed > 0.5f) rotationSpeed = 0.5f;
+
+            QVector3D targetUp = m_targetRotation3D.rotatedVector(QVector3D(0.0f, 1.0f, 0.0f));
+            float flipDirection = (targetUp.y() < 0.0f) ? -1.0f : 1.0f;
+
+            QQuaternion globalPitch = QQuaternion::fromAxisAndAngle(1.0f, 0.0f, 0.0f, -dy * rotationSpeed);
+            QQuaternion localYaw = QQuaternion::fromAxisAndAngle(0.0f, 1.0f, 0.0f, dx * rotationSpeed * flipDirection);
+
+            m_targetRotation3D = globalPitch * m_targetRotation3D * localYaw;
+            m_targetRotation3D.normalize();
+        }
+        update();
+    }
+
+    Q_INVOKABLE void handle3DZoom(float angleDelta) {
+        m_targetZoom3D -= angleDelta * 0.002f;
+        if (m_targetZoom3D < 0.1f) m_targetZoom3D = 0.1f;
+        update();
+    }
 
 signals:
     void maxIterationsChanged();
@@ -285,6 +351,9 @@ signals:
     void viewportScaleChanged();
     void boundsChanged();
     void is3DModeChanged();
+    void rotation3DChanged();
+    void pan3DChanged();
+    void zoom3DChanged();
 
 private:
     int m_maxIterations = 100;
@@ -322,6 +391,15 @@ private:
         QDir().mkpath(appDataPath);
         return appDataPath + "/presets.json";
     }
+
+    QQuaternion m_rotation3D =  QQuaternion();
+    QVector3D m_pan3D = QVector3D(0.0f, 0.0f, 0.0f);
+    float m_zoom3D = 3.0f;
+
+    QQuaternion m_targetRotation3D = QQuaternion();
+    QVector3D m_targetPan3D = QVector3D(0.0f, 0.0f, 0.0f);
+    float m_targetZoom3D = 3.0f;
+    const float m_lerpFactor = 0.12f;
 };
 
 #endif
