@@ -72,6 +72,79 @@ void FractalFBORenderer::init() {
     }
     delete ifsShader;
 
+    // 3d initializer
+    m_3dProgram = new QOpenGLShaderProgram();
+    m_3dProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/3d.vert");
+    m_3dProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/3d.frag");
+    m_3dProgram->bindAttributeLocation("aPos", 0);
+    m_3dProgram->bindAttributeLocation("aColor", 1);
+    m_3dProgram->link();
+
+    // cube vertex data
+    GLfloat cubeVertices[] = {
+        // front face
+        -0.5f, -0.5f, 0.5f,   1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f, 0.5f,   0.0f, 1.0f, 0.0f,
+         0.5f,  0.5f, 0.5f,   0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, 0.5f,   1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f, 0.5f,   0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f, 0.5f,   1.0f, 1.0f, 0.0f,
+        // back face
+        -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.5f, 0.5f, 0.5f,
+        // left face
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.1f, 0.4f,
+        -0.5f,  0.5f, -0.5f,  0.2f, 0.8f, 0.2f,
+        -0.5f, -0.5f, -0.5f,  0.9f, 0.9f, 0.1f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.1f, 0.4f,
+        -0.5f, -0.5f, -0.5f,  0.9f, 0.9f, 0.1f,
+        -0.5f, -0.5f,  0.5f,  0.3f, 0.2f, 0.7f,
+        // right face
+         0.5f,  0.5f,  0.5f,  0.7f, 0.1f, 0.9f,
+         0.5f, -0.5f,  0.5f,  0.1f, 0.8f, 0.6f,
+         0.5f, -0.5f, -0.5f,  0.4f, 0.4f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.7f, 0.1f, 0.9f,
+         0.5f, -0.5f, -0.5f,  0.4f, 0.4f, 1.0f,
+         0.5f,  0.5f, -0.5f,  0.2f, 0.9f, 0.3f,
+        // top face
+        -0.5f,  0.5f, -0.5f,  1.0f, 0.5f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.5f,
+         0.5f,  0.5f,  0.5f,  0.5f, 0.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 0.5f, 0.0f,
+         0.5f,  0.5f,  0.5f,  0.5f, 0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  0.1f, 0.7f, 0.8f,
+        // bottom face
+        -0.5f, -0.5f, -0.5f,  0.5f, 0.5f, 0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 0.5f, 0.5f,
+         0.5f, -0.5f,  0.5f,  0.5f, 0.0f, 0.5f,
+        -0.5f, -0.5f, -0.5f,  0.5f, 0.5f, 0.0f,
+         0.5f, -0.5f,  0.5f,  0.5f, 0.0f, 0.5f,
+        -0.5f, -0.5f,  0.5f,  0.8f, 0.2f, 0.2f
+    };
+
+    m_cubeVAO = new QOpenGLVertexArrayObject();
+    m_cubeVAO->create();
+    m_cubeVAO->bind();
+
+    m_cubeVBO = new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+    m_cubeVBO->create();
+    m_cubeVBO->setUsagePattern(QOpenGLBuffer::StaticDraw);
+    m_cubeVBO->bind();
+    m_cubeVBO->allocate(cubeVertices, sizeof(cubeVertices));
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)0);
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+
+    m_cubeVAO->release();
+    m_cubeVBO->release();
+
     m_initialized = true;
 }
 
@@ -91,7 +164,7 @@ QOpenGLFramebufferObject *FractalFBORenderer::createFramebufferObject(const QSiz
 void FractalFBORenderer::render() {
     if (!m_initialized) init();
 
-    // get the texture surface constraints directly from the active fbo container
+    // get the texture surface constraints directly froam the active fbo container
     QOpenGLFramebufferObject *fbo = framebufferObject();
     int width = fbo->width();
     int height = fbo->height();
@@ -120,9 +193,17 @@ void FractalFBORenderer::render() {
     // isolate state adjustments
     glViewport(0, 0, width, height);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    if (m_is3DMode) {
+        // 3d depth buffers
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        glEnable(GL_CULL_FACE);
+    } else {
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+    }
     glDisable(GL_BLEND);
 
     float screenAspect = (float)width / (float)height;
@@ -304,6 +385,53 @@ void FractalFBORenderer::render() {
 
         m_program->disableAttributeArray(0);
         m_program->release();
+    }
+
+    // 3d render
+    if (m_is3DMode) {
+        m_3dProgram->bind();
+
+        QVector3D bgColor = !m_gradientColors.isEmpty() ? m_gradientColors[0] : QVector3D(0.0f, 0.0f, 0.0f);
+        this->glClearColor(bgColor.x(), bgColor.y(), bgColor.z(), 1.0f);
+
+        this->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        float fov = 45.0f * M_PI / 180.0f;
+        float aspect = (float)width / (float)height;
+        float nearPlane = 0.1f;
+        float farPlane = 100.0f;
+        float f = 1.0f / tan(fov / 2.0f);
+
+        QMatrix4x4 projection;
+        projection.setToIdentity();
+        projection.setRow(0, QVector4D(f / aspect, 0.0f, 0.0f, 0.0f));
+        projection.setRow(1, QVector4D(0.0f, f, 0.0f, 0.0f));
+        projection.setRow(2, QVector4D(0.0f, 0.0f, (farPlane + nearPlane) / (nearPlane - farPlane), (2.0f * farPlane * nearPlane) / (nearPlane - farPlane)));
+        projection.setRow(3, QVector4D(0.0f, 0.0f, -1.0f, 0.0f));
+
+        QMatrix4x4 view;
+        view.setToIdentity();
+        view.setRow(2, QVector4D(0.0f, 0.0f, 1.0f, -3.0f));
+
+        m_rotationAngle += 0.01f;
+        float cosA = cos(m_rotationAngle);
+        float sinA = sin(m_rotationAngle);
+
+        QMatrix4x4 model;
+        model.setToIdentity();
+        model.setRow(0, QVector4D(cosA,  0.0f, sinA, 0.0f));
+        model.setRow(2, QVector4D(-sinA, 0.0f, cosA, 0.0f));
+
+        m_3dProgram->setUniformValue("u_model", model);
+        m_3dProgram->setUniformValue("u_view", view);
+        m_3dProgram->setUniformValue("u_projection", projection);
+
+        m_cubeVAO->bind();
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        m_cubeVAO->release();
+
+        m_3dProgram->release();
+        update();
     }
 
     // render to file engine
@@ -532,6 +660,9 @@ void FractalEngine::setGradientPositions(const QVariantList &positions) {
 
 void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
     auto *engine = static_cast<FractalEngine *>(item);
+
+    this->m_is3DMode = engine->is3DMode();
+
     this->setMaxIterations(engine->maxIterations());
 
     this->setGradientData(engine->internalGradientColors(), engine->internalGradientStops());

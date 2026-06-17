@@ -16,6 +16,8 @@ Window {
         id: engine
         anchors.fill: parent
 
+        is3DMode: mode3DToggle.checked
+
         maxIterations: Math.round(maxIterationsSlider.value)
         fractalType: typeSelector.currentIndex
         juliaC: Qt.vector2d(parseFloat(realInput.text), parseFloat(imagInput.text))
@@ -123,46 +125,68 @@ Window {
                     Layout.fillWidth: true
                 }
 
-                ComboBox {
-                    id: typeSelector
-                    model: ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
+                RowLayout {
                     Layout.fillWidth: true
+                    spacing: 10
 
-                    function applyDefaultView() {
-                        switch (currentIndex) {
-                            case 0: // mandelbrot
-                                engine.zoomLevel = 2.0
-                                engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
-                                break;
-                            case 1: // julia
-                                engine.zoomLevel = 2.0
-                                engine.zoomCenter = Qt.vector2d(0.0, 0.0)
-                                break;
-                            case 2: // burning ship
-                                engine.zoomLevel = 0.1
-                                engine.zoomCenter = Qt.vector2d(-1.755, -0.03)
-                                break;
-                            case 3: // newton
-                                engine.zoomLevel = 3.0
-                                engine.zoomCenter = Qt.vector2d(0.0, 0.0)
-                                break;
-                            case 4: // buddhabrot
-                                engine.zoomLevel = 2.0
-                                engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
-                                break;
-                            case 5: // anti-buddhabrot
-                                engine.zoomLevel = 2.0
-                                engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
-                                break;
-                            case 6: // barnsley fern
-                                engine.zoomLevel = 9.0
-                                engine.zoomCenter = Qt.vector2d(0.0, -5.0)
-                                break;
+                    ComboBox {
+                        id: typeSelector
+                        model: ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
+                        Layout.fillWidth: true
+
+                        function applyDefaultView() {
+                            switch (currentIndex) {
+                                case 0: // mandelbrot
+                                    engine.zoomLevel = 2.0
+                                    engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
+                                    break;
+                                case 1: // julia
+                                    engine.zoomLevel = 2.0
+                                    engine.zoomCenter = Qt.vector2d(0.0, 0.0)
+                                    break;
+                                case 2: // burning ship
+                                    engine.zoomLevel = 0.1
+                                    engine.zoomCenter = Qt.vector2d(-1.755, -0.03)
+                                    break;
+                                case 3: // newton
+                                    engine.zoomLevel = 3.0
+                                    engine.zoomCenter = Qt.vector2d(0.0, 0.0)
+                                    break;
+                                case 4: // buddhabrot
+                                    engine.zoomLevel = 2.0
+                                    engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
+                                    break;
+                                case 5: // anti-buddhabrot
+                                    engine.zoomLevel = 2.0
+                                    engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
+                                    break;
+                                case 6: // barnsley fern
+                                    engine.zoomLevel = 9.0
+                                    engine.zoomCenter = Qt.vector2d(0.0, -5.0)
+                                    break;
+                            }
+                        }
+
+                        onCurrentIndexChanged: {
+                            applyDefaultView()
                         }
                     }
 
-                    onCurrentIndexChanged: {
-                        applyDefaultView()
+                    // 3d toggle
+                    Switch {
+                        id: mode3DToggle
+                        text: mode3DToggle.checked ? "3d" : "2d"
+                        font.family: "Monospace"
+                        contentItem: Text {
+                            text: mode3DToggle.text
+                            font: mode3DToggle.font
+                            color: mode3DToggle.checked ? "#7d00ff" : "#ffffff"
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: mode3DToggle.indicator.width + mode3DToggle.spacing
+                        }
+                        onCheckedChanged: {
+                            typeSelector.applyDefaultView()
+                        }
                     }
                 }
 

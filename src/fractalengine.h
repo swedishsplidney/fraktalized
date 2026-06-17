@@ -17,6 +17,9 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QColor>
+#include <QMatrix4x4>
+#include <QOpenGLVertexArrayObject>
+#include <QOpenGLBuffer>
 
 // handles the actual GPU rendering work inside an isolated fbo texture canvas
 class FractalFBORenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_4_0_Core {
@@ -93,6 +96,14 @@ private:
     int m_viewPassCount = 0;
     const int m_maxViewPasses = 10;
 
+    QOpenGLShaderProgram *m_3dProgram = nullptr;
+    bool m_is3DMode = false;
+
+    QOpenGLVertexArrayObject *m_cubeVAO = nullptr;
+    QOpenGLBuffer *m_cubeVBO = nullptr;
+
+    float m_rotationAngle = 0.0f;
+
     void init();
 };
 
@@ -114,10 +125,17 @@ class FractalEngine : public QQuickFramebufferObject {
     Q_PROPERTY(int aaSamples READ aaSamples WRITE setAaSamples NOTIFY aaSamplesChanged)
     Q_PROPERTY(float viewportScale READ viewportScale WRITE setViewportScale NOTIFY viewportScaleChanged)
 
+    Q_PROPERTY(bool is3DMode READ is3DMode WRITE setIs3DMode NOTIFY is3DModeChanged)
+
     Q_PROPERTY(double currentMinX READ currentMinX NOTIFY boundsChanged)
     Q_PROPERTY(double currentMaxX READ currentMaxX NOTIFY boundsChanged)
     Q_PROPERTY(double currentMinY READ currentMinY NOTIFY boundsChanged)
     Q_PROPERTY(double currentMaxY READ currentMaxY NOTIFY boundsChanged)
+
+    Q_PROPERTY(float rotationX READ rotationX WRITE setRotationX NOTIFY rotation3DChanged)
+    Q_PROPERTY(float rotationY READ rotationY WRITE setRotationY NOTIFY rotation3DChanged)
+    Q_PROPERTY(QVector3D pan3D READ pan3D WRITE setPan3D NOTIFY pan3DChanged)
+    Q_PROPERTY(float zoom3D READ zoom3D WRITE setZoom3D NOTIFY zoom3DChanged)
 
 public:
     FractalEngine();
@@ -138,6 +156,16 @@ public:
         if (m_viewportScale != scale) {
             m_viewportScale = scale;
             emit viewportScaleChanged();
+            update();
+        }
+    }
+
+    // 3d toggle
+    bool is3DMode() const { return m_is3DMode; }
+    void setIs3DMode(bool enabled) {
+        if (m_is3DMode != enabled) {
+            m_is3DMode = enabled;
+            emit is3DModeChanged();
             update();
         }
     }
@@ -242,6 +270,9 @@ public:
 
     Q_INVOKABLE void deletePreset(const QString &name);
 
+    // 3d stuff
+
+
 signals:
     void maxIterationsChanged();
     void gradientColorsChanged();
@@ -253,6 +284,7 @@ signals:
     void aaSamplesChanged();
     void viewportScaleChanged();
     void boundsChanged();
+    void is3DModeChanged();
 
 private:
     int m_maxIterations = 100;
@@ -275,6 +307,8 @@ private:
 
     int m_aaSamples = 1;
     float m_viewportScale = 1.0f;
+
+    bool m_is3DMode = false;
 
     void updateComputedBounds();
 
