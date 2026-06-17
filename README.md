@@ -39,6 +39,14 @@ fraktalized currently has 7 fractal sets:
 * **anti-buddhabrot:** reverse buddhabrot
 * **barnsley fern:** looks very naturey
 
+### current fractal types:
+
+fraktalized currently has 3 fractal types:
+
+* escape time (the classic)
+* trajectory (nebula-looking)
+* iterated function system (self-same repeating stuff)
+
 ---
 
 ## controls:
