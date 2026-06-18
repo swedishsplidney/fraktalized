@@ -89,47 +89,47 @@ void FractalFBORenderer::init() {
     // cube vertex data
     GLfloat cubeVertices[] = {
         // front face
-        -0.5f, -0.5f, 0.5f,   1.0f, 0.0f, 0.0f,
-         0.5f, -0.5f, 0.5f,   0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f, 0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f,   1.0f, 0.0f, 0.0f,
-         0.5f,  0.5f, 0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f, 0.5f,   1.0f, 1.0f, 0.0f,
+        -2.0f, -2.0f, 2.0f,   1.0f, 0.0f, 0.0f,
+         2.0f, -2.0f, 2.0f,   0.0f, 1.0f, 0.0f,
+         2.0f,  2.0f, 2.0f,   0.0f, 0.0f, 1.0f,
+        -2.0f, -2.0f, 2.0f,   1.0f, 0.0f, 0.0f,
+         2.0f,  2.0f, 2.0f,   0.0f, 0.0f, 1.0f,
+        -2.0f,  2.0f, 2.0f,   1.0f, 1.0f, 0.0f,
         // back face
-        -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.5f, 0.5f, 0.5f,
+        -2.0f, -2.0f, -2.0f,  1.0f, 0.0f, 1.0f,
+        -2.0f,  2.0f, -2.0f,  0.0f, 1.0f, 1.0f,
+         2.0f,  2.0f, -2.0f,  1.0f, 1.0f, 1.0f,
+        -2.0f, -2.0f, -2.0f,  1.0f, 0.0f, 1.0f,
+         2.0f,  2.0f, -2.0f,  1.0f, 1.0f, 1.0f,
+         2.0f, -2.0f, -2.0f,  2.0f, 2.0f, 2.0f,
         // left face
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.1f, 0.4f,
-        -0.5f,  0.5f, -0.5f,  0.2f, 0.8f, 0.2f,
-        -0.5f, -0.5f, -0.5f,  0.9f, 0.9f, 0.1f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.1f, 0.4f,
-        -0.5f, -0.5f, -0.5f,  0.9f, 0.9f, 0.1f,
-        -0.5f, -0.5f,  0.5f,  0.3f, 0.2f, 0.7f,
+        -2.0f,  2.0f,  2.0f,  1.0f, 0.1f, 0.4f,
+        -2.0f,  2.0f, -2.0f,  0.2f, 0.8f, 0.2f,
+        -2.0f, -2.0f, -2.0f,  0.9f, 0.9f, 0.1f,
+        -2.0f,  2.0f,  2.0f,  1.0f, 0.1f, 0.4f,
+        -2.0f, -2.0f, -2.0f,  0.9f, 0.9f, 0.1f,
+        -2.0f, -2.0f,  2.0f,  0.3f, 0.2f, 0.7f,
         // right face
-         0.5f,  0.5f,  0.5f,  0.7f, 0.1f, 0.9f,
-         0.5f, -0.5f,  0.5f,  0.1f, 0.8f, 0.6f,
-         0.5f, -0.5f, -0.5f,  0.4f, 0.4f, 1.0f,
-         0.5f,  0.5f,  0.5f,  0.7f, 0.1f, 0.9f,
-         0.5f, -0.5f, -0.5f,  0.4f, 0.4f, 1.0f,
-         0.5f,  0.5f, -0.5f,  0.2f, 0.9f, 0.3f,
+         2.0f,  2.0f,  2.0f,  0.7f, 0.1f, 0.9f,
+         2.0f, -2.0f,  2.0f,  0.1f, 0.8f, 0.6f,
+         2.0f, -2.0f, -2.0f,  0.4f, 0.4f, 1.0f,
+         2.0f,  2.0f,  2.0f,  0.7f, 0.1f, 0.9f,
+         2.0f, -2.0f, -2.0f,  0.4f, 0.4f, 1.0f,
+         2.0f,  2.0f, -2.0f,  0.2f, 0.9f, 0.3f,
         // top face
-        -0.5f,  0.5f, -0.5f,  1.0f, 0.5f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.5f,
-         0.5f,  0.5f,  0.5f,  0.5f, 0.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 0.5f, 0.0f,
-         0.5f,  0.5f,  0.5f,  0.5f, 0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  0.1f, 0.7f, 0.8f,
+        -2.0f,  2.0f, -2.0f,  1.0f, 2.0f, 0.0f,
+        -2.0f,  2.0f,  2.0f,  0.0f, 1.0f, 2.0f,
+         2.0f,  2.0f,  2.0f,  2.0f, 0.0f, 1.0f,
+        -2.0f,  2.0f, -2.0f,  1.0f, 2.0f, 0.0f,
+         2.0f,  2.0f,  2.0f,  2.0f, 0.0f, 1.0f,
+         2.0f,  2.0f, -2.0f,  0.1f, 0.7f, 0.8f,
         // bottom face
-        -0.5f, -0.5f, -0.5f,  0.5f, 0.5f, 0.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 0.5f, 0.5f,
-         0.5f, -0.5f,  0.5f,  0.5f, 0.0f, 0.5f,
-        -0.5f, -0.5f, -0.5f,  0.5f, 0.5f, 0.0f,
-         0.5f, -0.5f,  0.5f,  0.5f, 0.0f, 0.5f,
-        -0.5f, -0.5f,  0.5f,  0.8f, 0.2f, 0.2f
+        -2.0f, -2.0f, -2.0f,  2.0f, 2.0f, 0.0f,
+         2.0f, -2.0f, -2.0f,  0.0f, 2.0f, 2.0f,
+         2.0f, -2.0f,  2.0f,  2.0f, 0.0f, 2.0f,
+        -2.0f, -2.0f, -2.0f,  2.0f, 2.0f, 0.0f,
+         2.0f, -2.0f,  2.0f,  2.0f, 0.0f, 2.0f,
+        -2.0f, -2.0f,  2.0f,  0.8f, 0.2f, 0.2f
     };
 
     m_cubeVAO = new QOpenGLVertexArrayObject();
@@ -205,7 +205,7 @@ void FractalFBORenderer::render() {
         // 3d depth buffers
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
-        glEnable(GL_CULL_FACE);
+        glDisable(GL_CULL_FACE);
     } else {
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_CULL_FACE);
@@ -421,14 +421,22 @@ void FractalFBORenderer::render() {
         model.setToIdentity();
         model.rotate(this->m_rotation3D);
 
+        // calc camera pos
+        QMatrix4x4 viewInverse = view.inverted();
+        QVector3D cameraPosWorld = viewInverse.map(QVector3D(0.0f, 0.0f, 0.0f));
+
         m_3dProgram->setUniformValue("u_model", model);
         m_3dProgram->setUniformValue("u_view", view);
         m_3dProgram->setUniformValue("u_projection", projection);
+        m_3dProgram->setUniformValue("u_cameraPos", cameraPosWorld);
+        m_3dProgram->setUniformValue("u_maxIterations", m_maxIterations);
+
+        m_3dProgram->setUniformValueArray("u_gradient_colors", colors, 4);
+        m_3dProgram->setUniformValueArray("u_gradient_stops", stops, 4, 1);
 
         m_cubeVAO->bind();
         glDrawArrays(GL_TRIANGLES, 0, 36);
         m_cubeVAO->release();
-
         m_3dProgram->release();
         update();
     }
@@ -800,6 +808,28 @@ void FractalEngine::savePreset(const QString & name, const QVariantList &positio
     centerObj["y"] = static_cast<double>(center.y());
     presetObj["center"] = centerObj;
 
+    // 3d stuff
+    presetObj["is3D"] = m_is3DMode;
+    if (m_is3DMode) {
+        // serialize pan vector
+        QJsonObject panObj;
+        panObj["x"] = m_targetPan3D.x();
+        panObj["y"] = m_targetPan3D.y();
+        panObj["z"] = m_targetPan3D.z();
+        presetObj["pan3D"] = panObj;
+
+        // serialize rotation quaternion
+        QJsonObject rotObj;
+        rotObj["scalar"] = m_targetRotation3D.scalar();
+        rotObj["x"] = m_targetRotation3D.x();
+        rotObj["y"] = m_targetRotation3D.y();
+        rotObj["z"] = m_targetRotation3D.z();
+        presetObj["rotation3D"] = rotObj;
+
+        // serialize 3d zoom scalar
+        presetObj["zoom3D"] = m_targetZoom3D;
+    }
+
     // insert preset
     masterRoot[name] = presetObj;
 
@@ -869,6 +899,30 @@ QVariantMap FractalEngine::loadPresetData(const QString &name) {
     QJsonObject centerObj = presetObj["center"].toObject();
     QVector2D centerVec(centerObj["x"].toDouble(), centerObj["y"].toDouble());
     result["center"] = centerVec;
+
+    // load 3d state
+    bool is3D = presetObj.value("is3D").toBool(false);
+    result["is3DMode"] = is3D;
+
+    if (is3D) {
+        // reconstruct pan
+        QJsonObject panObj = presetObj["pan3D"].toObject();
+        QVector3D panVec(panObj["x"].toDouble(), panObj["y"].toDouble(), panObj["z"].toDouble());
+        result["pan3D"] = panVec;
+
+        // reconstruct rotation
+        QJsonObject rotObj = presetObj["rotation3D"].toObject();
+        QQuaternion rotQuat(rotObj["scalar"].toDouble(), rotObj["x"].toDouble(), rotObj["y"].toDouble(), rotObj["z"].toDouble());
+        result["rotation3D"] = rotQuat;
+
+        // reconstruct zoom
+        result["zoom3D"] = presetObj["zoom3D"].toDouble(3.0);
+    } else {
+        // clear values if switching to 2d preset
+        result["pan3D"] = QVector3D(0.0f, 0.0f, 0.0f);
+        result["rotation3D"] = QQuaternion();
+        result["zoom3D"] = 3.0f;
+    }
 
     return result;
 }

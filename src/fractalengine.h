@@ -286,8 +286,8 @@ public:
     // 3d stuff
     QVector3D pan3D() const { return m_targetPan3D; }
     void setPan3D(const QVector3D &val) {
-        if (m_pan3D != val) {
-            m_pan3D = val;
+        if (m_targetPan3D != val) {
+            m_targetPan3D = val;
             emit pan3DChanged();
             update();
         }
@@ -295,8 +295,8 @@ public:
 
     float zoom3D() const { return m_targetZoom3D; }
     void setZoom3D(float val) {
-        if (m_zoom3D != val) {
-            m_zoom3D = val;
+        if (m_targetZoom3D != val) {
+            m_targetZoom3D = val;
             emit zoom3DChanged();
             update();
         }
@@ -304,8 +304,8 @@ public:
 
     QQuaternion rotation3D() const { return m_targetRotation3D; }
     void setRotation3D(const QQuaternion &val) {
-        if (m_rotation3D != val) {
-            m_rotation3D = val;
+        if (m_targetRotation3D != val) {
+            m_targetRotation3D = val;
             emit rotation3DChanged();
             update();
         }
