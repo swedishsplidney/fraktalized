@@ -16,8 +16,6 @@ Window {
         id: engine
         anchors.fill: parent
 
-        is3DMode: mode3DToggle.checked
-
         maxIterations: Math.round(maxIterationsSlider.value)
         fractalType: typeSelector.currentIndex
         juliaC: Qt.vector2d(parseFloat(realInput.text), parseFloat(imagInput.text))
@@ -157,7 +155,7 @@ Window {
 
                     ComboBox {
                         id: typeSelector
-                        model: ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
+                        model: mode3DToggle.checked ? ["mandelbulb"] : ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
                         Layout.fillWidth: true
 
                         function applyDefaultView() {
@@ -203,6 +201,9 @@ Window {
                         id: mode3DToggle
                         text: mode3DToggle.checked ? "3d" : "2d"
                         font.family: "Monospace"
+
+                        checked: engine.is3DMode
+
                         contentItem: Text {
                             text: mode3DToggle.text
                             font: mode3DToggle.font
@@ -210,8 +211,10 @@ Window {
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: mode3DToggle.indicator.width + mode3DToggle.spacing
                         }
-                        onCheckedChanged: {
+
+                        onToggled: {
                             typeSelector.applyDefaultView()
+                            engine.is3DMode = checked;
                         }
                     }
                 }
@@ -500,14 +503,31 @@ Window {
                         radius: 4
                         border.color: "#444444"
 
-                        // visualize stops
+                        // dynamic gradient block
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
-                            GradientStop { position: gradientEditorContainer.stops[0].pos; color: gradientEditorContainer.stops[0].color }
-                            GradientStop { position: gradientEditorContainer.stops[1].pos; color: gradientEditorContainer.stops[1].color }
-                            GradientStop { position: gradientEditorContainer.stops[2].pos; color: gradientEditorContainer.stops[2].color }
-                            GradientStop { position: gradientEditorContainer.stops[3].pos; color: gradientEditorContainer.stops[3].color }
+                            id: visualGradient
                         }
+
+                        Connections {
+                            target: gradientEditorContainer
+                            function onStopsChanged() {
+                                let newStops = [];
+                                for (let i = 0; i < gradientEditorContainer.stops.length; i++) {
+                                    let stopData = gradientEditorContainer.stops[i];
+                                    let dynamicStop = Qt.createQmlObject(
+                                        'import QtQuick; GradientStop {}',
+                                        visualGradient
+                                    );
+                                    dynamicStop.position = stopData.pos;
+                                    dynamicStop.color = stopData.color;
+
+                                    newStops.push(dynamicStop);
+                                }
+                                visualGradient.stops = newStops;
+                            }
+                        }
+                        Component.onCompleted: gradientEditorContainer.stopsChanged()
                     }
 
                     // interactive handles
@@ -772,10 +792,17 @@ Window {
                                     gradientEditorContainer.stops = retrievedStops;
                                     gradientEditorContainer.stopsChanged();
 
+                                    let newQmlStops = [];
                                     for (let i = 0; i < retrievedStops.length; i++) {
-                                        gradientTrack.gradient.stops[i].position = retrievedStops[i].pos;
-                                        gradientTrack.gradient.stops[i].color = retrievedStops[i].color;
+                                        let stopComponent = Qt.createComponent("QtQuick", "GradientStop");
+                                        if (stopComponent.status === Component.Ready) {
+                                            newQmlStops.push(stopComponent.createObject(gradientTrack, {
+                                                "position": retrievedStops[i].pos,
+                                                "color": retrievedStops[i].color
+                                            }));
+                                        }
                                     }
+                                    gradientTrack.gradient.stops = newQmlStops;
                                 }
 
                                 // set fractal type
@@ -789,6 +816,26 @@ Window {
                                 }
                                 if (presetState.center !== undefined) {
                                     engine.zoomCenter = presetState.center;
+                                }
+
+                                // 3d stuff
+                                if (presetState.is3DMode !== undefined) {
+                                    engine.is3DMode = presetState.is3DMode;
+
+                                    if (typeof mode3DToggle !== "undefined" && mode3DToggle !== null) {
+                                        mode3DToggle.checked = presetState.is3DMode;
+                                    }
+
+                                    if (presetState.is3DMode) {
+                                        if (presetState.pan3D !== undefined) engine.pan3D = presetState.pan3D;
+                                        if (presetState.rotation3D !== undefined) engine.rotation3D = presetState.pan3D;
+                                        if (presetState.zoom3D !== undefined) engine.zoom3D = presetState.zoom3D;
+                                    } else {
+                                        // clean up old 3d state stuff
+                                        engine.pan3D = Qt.vector3d(0, 0, 0);
+                                        engine.rotation3D = Qt.quaternion(1, 0, 0, 0);
+                                        engine.zoom3D = 3.0;
+                                    }
                                 }
 
                                 gradientEditorContainer.updateEngineGradient();
