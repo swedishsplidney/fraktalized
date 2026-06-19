@@ -466,8 +466,24 @@ Window {
                     spacing: 12
                     Layout.fillWidth: true
 
+                    signal liveUpdate()
+
                     function updateStopPosition(index, newPos) {
-                        stops[index].pos = Math.max(0.0, Math.min(1.0, newPos));
+                        let boundedPos = Math.max(0.0, Math.min(1.0, newPos));
+
+                        stops[index].pos = boundedPos;
+
+                        liveUpdate();
+
+                        updateEngineGradient();
+                    }
+
+                    function sortStops() {
+                        let currentStops = [...stops];
+                        currentStops.sort((a, b) => a.pos - b.pos);
+                        stops = currentStops;
+
+                        stopsChanged();
                         updateEngineGradient();
                     }
 
@@ -509,7 +525,9 @@ Window {
                         engine.gradientColors = colors;
                     }
 
-                    Component.onCompleted: updateEngineGradient()
+                    Component.onCompleted: {
+                        updateEngineGradient();
+                    }
 
                     // gradient preview
                     Rectangle {
@@ -518,11 +536,44 @@ Window {
                         Layout.fillWidth: true
                         radius: 4
                         border.color: "#444444"
+                        color: "transparent"
+                        clip: true
 
-                        // dynamic gradient block
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            id: visualGradient
+                        Canvas {
+                            id: gradientCanvas
+                            anchors.fill: parent
+
+                            Connections {
+                                target: gradientEditorContainer
+
+                                function onStopsChanged() {
+                                    gradientCanvas.requestPaint();
+                                }
+                                
+                                function onLiveUpdate() {
+                                    gradientCanvas.requestPaint();
+                                }
+                            }
+
+                            onPaint: {
+                                let ctx = getContext("2d");
+                                ctx.clearRect(0, 0, width, height);
+
+                                // create gradient
+                                let grad = ctx.createLinearGradient(0, 0, width, 0);
+
+                                let currentStops = gradientEditorContainer.stops || [];
+                                let sortedStops = [...currentStops].sort((a, b) => a.pos - b.pos);
+
+                                for (let i = 0; i < sortedStops.length; i++) {
+                                    grad.addColorStop(sortedStops[i].pos, sortedStops[i].color);
+                                }
+
+                                ctx.fillStyle = grad;
+                                ctx.fillRect(0, 0, width, height);
+                            }
+
+                            Component.onCompleted: requestPaint()
                         }
 
                         // track handle additions / deletions
@@ -554,26 +605,6 @@ Window {
                                 }
                             }
                         }
-
-                        Connections {
-                            target: gradientEditorContainer
-                            function onStopsChanged() {
-                                let newStops = [];
-                                for (let i = 0; i < gradientEditorContainer.stops.length; i++) {
-                                    let stopData = gradientEditorContainer.stops[i];
-                                    let dynamicStop = Qt.createQmlObject(
-                                        'import QtQuick; GradientStop {}',
-                                        visualGradient
-                                    );
-                                    dynamicStop.position = stopData.pos;
-                                    dynamicStop.color = stopData.color;
-
-                                    newStops.push(dynamicStop);
-                                }
-                                visualGradient.stops = newStops;
-                            }
-                        }
-                        Component.onCompleted: gradientEditorContainer.stopsChanged()
                     }
 
                     // interactive handles
@@ -591,13 +622,26 @@ Window {
                                 width: 10
                                 height: 24
                                 radius: 2
-                                color: modelData.color
+
+                                // safeguard
+                                color: modelData ? modelData.color : "transparent"
+
                                 border.color: dragArea.pressed ? "#7d00ff" : "#ffffff"
                                 border.width: 1.5
                                 anchors.verticalCenter: parent.verticalCenter
 
-                                // map the 0 - 1 position to width coords
-                                x: modelData.pos * (handleTrack.width - width)
+                                // safeguard
+                                x: (modelData ? modelData.pos : 0.0) * (handleTrack.width - width)
+
+                                onXChanged: {
+                                    if (dragArea.pressed) {
+                                        let maxTrackWidth = handleTrack.width - width;
+                                        if (maxTrackWidth <= 0) return;
+
+                                        let newPos = x / maxTrackWidth;
+                                        gradientEditorContainer.updateStopPosition(index, newPos);
+                                    }
+                                }
 
                                 MouseArea {
                                     id: dragArea
@@ -608,21 +652,18 @@ Window {
                                     drag.maximumX: handleTrack.width - handleAnchor.width
                                     acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                                    // update data map when dragging
-                                    onPositionChanged: {
-                                        if (pressed) {
-                                            let maxTrackWidth = handleTrack.width - handleAnchor.width
-                                            if (maxTrackWidth <= 0) return;
 
-                                            let newPos = handleAnchor.x / maxTrackWidth
-                                            gradientEditorContainer.updateStopPosition(index, newPos)
 
-                                            gradientTrack.gradient.stops[index].position = Math.max(0.0, Math.min(1.0, newPos))
+                                    onReleased: (mouse) => {
+                                        if (mouse.button === Qt.LeftButton) {
+                                            gradientEditorContainer.sortStops();
                                         }
                                     }
 
                                     // double click an anchor to change its color
                                     onDoubleClicked: (mouse) => {
+                                        if (!modelData) return; // safeguard
+
                                         if (mouse.button === Qt.LeftButton) {
                                             colorPicker.targetIndex = index
                                             colorPicker.selectedColor = modelData.color
@@ -652,6 +693,8 @@ Window {
                     property int targetIndex: 0
 
                     onAccepted: {
+                        let currentStops = [...gradientEditorContainer.stops];
+
                         gradientEditorContainer.stops[targetIndex].color = colorPicker.selectedColor.toString()
 
                         gradientEditorContainer.stopsChanged()
@@ -840,20 +883,16 @@ Window {
                                 // set color stops
                                 let retrievedStops = presetState.stops;
                                 if (retrievedStops && retrievedStops.length > 0) {
-                                    gradientEditorContainer.stops = retrievedStops;
-                                    gradientEditorContainer.stopsChanged();
-
-                                    let newQmlStops = [];
+                                    let pureJsStops = [];
                                     for (let i = 0; i < retrievedStops.length; i++) {
-                                        let stopComponent = Qt.createComponent("QtQuick", "GradientStop");
-                                        if (stopComponent.status === Component.Ready) {
-                                            newQmlStops.push(stopComponent.createObject(gradientTrack, {
-                                                "position": retrievedStops[i].pos,
-                                                "color": retrievedStops[i].color
-                                            }));
-                                        }
+                                        pureJsStops.push({
+                                            pos: Number(retrievedStops[i].pos),
+                                            color: String(retrievedStops[i].color)
+                                        });
                                     }
-                                    gradientTrack.gradient.stops = newQmlStops;
+
+                                    gradientEditorContainer.stops = pureJsStops;
+                                    gradientEditorContainer.stopsChanged();
                                 }
 
                                 // set fractal type
@@ -879,7 +918,9 @@ Window {
 
                                     if (presetState.is3DMode) {
                                         if (presetState.pan3D !== undefined) engine.pan3D = presetState.pan3D;
-                                        if (presetState.rotation3D !== undefined) engine.rotation3D = presetState.pan3D;
+
+                                        if (presetState.rotation3D !== undefined) engine.rotation3D = presetState.rotation3D;
+
                                         if (presetState.zoom3D !== undefined) engine.zoom3D = presetState.zoom3D;
                                     } else {
                                         // clean up old 3d state stuff
