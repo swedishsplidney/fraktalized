@@ -65,6 +65,95 @@ fraktalized currently has 4 fractal types:
 
 ---
 
+## mathy information:
+
+for if you're curious about how all the nerdy math stuff works
+
+### 2d escape time:
+
+these fractals are rendered by computing the escape-time behavior of a math function on the complex plane (basically, this just means tracking how many times you can repeat a function before its value escapes a set boundary). 
+for each pixel, the coordinates are mapped to a complex number $c = x + yi$, and the engine repeatedly evaluates the quadratic recurrence relation:
+
+$$Z_{n+1} = Z_n^2 + c$$ 
+
+however, because these are complex numbers, it expands to: 
+
+$$z^2 = (x + yi)^2 = x^2 - y^2 + 2xyi$$
+
+in the code, it gets split into its real and imaginary parts:
+
+* $x_{new} = x^2 - y^2 + c_{real}$
+* $y_{new} = 2xy + c_{imag}$
+
+starting at $Z_0 = 0$ (for the mandelbrot set), the engine checks if the magnitude $|Z| = \sqrt{x^2 + y^2}$ escapes a specific threshold (typically $|Z| > 2$, since any point exceeding a radius of 2 is always gonna to escape to infinity) within a maximum iteration limit.
+
+the iteration count that it escapes at determines the color of the pixel. however, if it just gets mapped directly, it results in harsh color banding, so a continuous potential formula is applied to smooth the colors out:
+
+$$\nu = i + 1 - \frac{\ln(\ln(|Z|))}{\ln(2)}$$
+
+where $i$ is the raw iteration count at escape, and $|Z|$ is the magnitude of the complex number at escape.
+
+### 2d trajectory orbit traps
+
+this one is similar to 2d escape time, except instead of only rendering *when* a point escapes, trajectory rendering shows the path of the orbit that $Z$ takes across the complex plane during iterations.
+
+as $Z$ iterates through $Z_{n+1} = Z_n^2 + c$, its location is constantly compared against a shape (acting as an orbit trap). orbit traps can be almost anything, including lines, points or circles. the engine then determines the minimum distance $d$ between the points and the trap across all the iterations:
+
+$$d_{min} = \min_{k=0}^{N} \Big( \text{distance}(Z_k, \text{trap}) \Big)$$
+
+for a simple point trap at the origin $(0, 0)$, the distance is just the standard euclidean distance:
+
+$$d = \sqrt{x_k^2 + y_k^2}$$
+
+this distance is then normalized and mapped to the color gradient, making the nebula-like trails of the fractals convergence behavior
+
+### 2d iterated function systems (ifs):
+
+iterated function systems make fractals using probabilites and contractive affine transformations.
+
+an affine transformation (in 2d) basically just scales, rotates, shears, or translates a point. mathematically, it is expressed with matrix multiplication and a translation vector:
+
+$$\begin{bmatrix} x_{n+1} \\ y_{n+1} \end{bmatrix} = \begin{bmatrix} a & b \\ c & d \end{bmatrix} \begin{bmatrix} x_n \\ y_n \end{bmatrix} + \begin{bmatrix} e \\ f \end{bmatrix}$$
+
+which expands to:
+
+* $x_{n+1} = ax_n + by_n + e$
+* $y_{n+1} = cx_n + dy_n + f$
+
+a typical ifs has a set of multiple transformations $(W_1, W_2, \dots, W_m)$, each with its own probability $p_i$ such that $\sum p_i = 1$.
+
+the engine starts with a random point, and on every iteration it randomly selects one of the transformations based on its probability weights, transforms, and plots at the new coords. because the transformations are contractive (meaning they pull points closer together), repeating this causes the points to organize into a detailed and self similar fractal attractor.
+
+### 3d raymarching and distance estimators:
+
+since 3d fractals are technically infinitely detailed, using traditional polygons or triangles would result in a gpu explosion (bad). instead, fraktalized uses **raymarching** combined with **signed distance fields** (or SDFs) inside openGL fragment (`.frag`) shaders.
+
+for each screen pixel, a raycast is sent from the camera positon $\vec{o}$ along a direction vector $\vec{d}$. the position of the ray at any total distance $t$ is defined as: 
+
+$$\vec{p}(t) = \vec{o} + t\vec{d}$$
+
+#### raymarching loop:
+
+this is different from normal raytracing in the sense that instead of calculating intersections, raymarching evaluates a **distance estimator (or DE)** function at the current point $\vec{p}$. the de returns the max distance the ray can travel in *any direction* without hitting anything, and then the ray steps forwards by exactly that distance ($t = t + \text{DE}(\vec{p})$), and the loop repeats. if $\text{DE}(\vec{p})$ falls below a very small threshold (for example, $0.001$), a hit is registered and the pixel is shaded.
+
+#### mandelbulb distance estimator:
+
+to find the surface of a 3d mandelbulb fractal, the distance estimator converts the 3d cartesian coords $(x, y, z)$ into spherical coords (radius $r$, theta $\theta$, and phi $\phi$):
+
+$$r = \sqrt{x^2 + y^2 + z^2}$$
+$$\theta = \arctan2(\sqrt{x^2 + y^2}, z)$$
+$$\phi = \arctan2(y, x)$$
+
+the point is then iterated using an $n$-th power scaling system (typically power $n = 8$ for a normal mandelbulb):
+
+$$\vec{p}_{next} = r^n \begin{bmatrix} \sin(n\theta)\cos(n\phi) \\ \sin(n\theta)\sin(n\phi) \\ \cos(n\theta) \end{bmatrix} + \vec{c}$$
+
+to determine the max stepping distance without clipping through the fractal's geometry, the engine simultaneously tracks both the running derivative ($dr$) of the space distortion. the final estimated distance to the surface is completed using the **hubbard-douady potential estimate**:
+
+$$\text{Distance} = 0.5 \cdot \frac{r}{\ln(r)} \cdot dr$$
+
+---
+
 ## gallery:
 
 ![mandelbrot](images/render_20260614_180911.png)
