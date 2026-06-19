@@ -16,7 +16,7 @@
 ![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
 ![macOS](https://img.shields.io/badge/mac%20os-000000?style=for-the-badge&logo=macos&logoColor=F0F0F0)
 
-an open-source, cross-platform ultra smooth real time fractal explorer
+an open-source, cross-platform, ultra smooth real time fractal explorer
 built using a hybrid architecture of Qt6 (QML/C++) and openGL (GLSL 330 core / 4.3 compute shaders).
 
 ![demo ss](images/application_screenshot.png)
@@ -32,7 +32,7 @@ fragment `.frag`/`.vert`, and compute `.glsl` shader files.
 * **multithreaded fbo rendering:** isolates raw openGL, gpu heavy stuff from the main ui system by using `QQuickFramebufferObject`, in order to keep the ui responsive even if your gpu is pinned at 100% usage
 * **full 64 bit depth:** uses 64 bit `double` systems for maximum zooming depth and accuracy.
 * **camera smoothing:** the camera system uses `lerp` (or `QQuaternion::slerp` in 3d) to make the camera feel very smooth and cinematic
-* **procedural gradient-based colors:** user controlled, real time, gradient-based color mapping system for beautiful, fully customizable color setup with a slight quadratic brightness boost at the edges.
+* **procedural gradient-based colors:** user controlled, real time, gradient-based color mapping system that supports up to 16 stops for beautiful, fully customizable color setup with a slight quadratic brightness boost at the edges.
 * **render to file:** you can render any fractal at any location easily with any custom resolution, just position the camera and change your settings to what you want, and hit render. to help prevent your graphics card from exploding, it also renders in 2000x2000px tiles.
 * **SSAA anti-aliasing:** utilizes super-sampling anti-aliasing to give super smooth looking visuals. you can choose off, 2x, or 3x ssaa, giving smoother images at the cost of gpu usage
 * **JSON preset system:** you can save any color, position and zoom setup to a JSON file on your computer for later reference, in case you forget. it is also super easy to delete said JSON entries if you make a mistake
