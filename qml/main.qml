@@ -530,22 +530,28 @@ Window {
                             anchors.fill: parent
 
                             onDoubleClicked: (mouse) => {
-                                // calc click location
-                                let clickPct = mouse.x / width;
-
-                                // new stop
-                                let newStop = { pos: Math.max(0.0, Math.min(1.0, clickPct)), color: "#ffffff" };
-
-                                // js array reassignment
                                 let currentStops = [...gradientEditorContainer.stops];
-                                currentStops.push(newStop);
 
-                                // sort
-                                currentStops.sort((a, b) => a.pos - b.pos);
+                                if (currentStops.length < 16) {
+                                    // calc click location
+                                    let clickPct = mouse.x / width;
 
-                                // reassign arrays
-                                gradientEditorContainer.stops = currentStops;
-                                gradientEditorContainer.updateEngineGradient();
+                                    // new stop
+                                    let newStop = {pos: Math.max(0.0, Math.min(1.0, clickPct)), color: "#ffffff"};
+
+                                    // js array reassignment
+                                    let currentStops = [...gradientEditorContainer.stops];
+                                    currentStops.push(newStop);
+
+                                    // sort
+                                    currentStops.sort((a, b) => a.pos - b.pos);
+
+                                    // reassign arrays
+                                    gradientEditorContainer.stops = currentStops;
+                                    gradientEditorContainer.updateEngineGradient();
+                                } else {
+                                    console.warn("you cannot have more than 16 stops!");
+                                }
                             }
                         }
 
