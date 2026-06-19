@@ -227,11 +227,19 @@ void FractalFBORenderer::render() {
     }
 
     // color
-    QVector3D colors[4];
-    float stops[4];
-    for (int i = 0; i < 4; ++i) {
+    const int MAX_SHADER_STOPS = 64;
+    int activeStopCount = static_cast<int>(std::min<qsizetype>(m_gradientColors.size(), MAX_SHADER_STOPS));
+
+    if (activeStopCount == 0) {
+        activeStopCount = 2; // fallback in case qml takes a second to send the stops
+    }
+
+    std::vector<QVector3D> colors(activeStopCount);
+    std::vector<float> stops(activeStopCount);
+
+    for (int i = 0; i < activeStopCount; i++) {
         colors[i] = (i < m_gradientColors.size()) ? m_gradientColors[i] : QVector3D(0.0f, 0.0f, 0.0f);
-        stops[i]  = (i < m_gradientStops.size()) ? m_gradientStops[i] : (static_cast<float>(i) / 3.0f);
+        stops[i] = (i < m_gradientStops.size()) ? m_gradientStops[i] : (static_cast<float>(i) / static_cast<float>(activeStopCount - 1));
     }
 
     // local coordinate structure passed down to the pipeline unit
@@ -251,8 +259,9 @@ void FractalFBORenderer::render() {
         m_program->setUniformValue("u_tile_bounds", QVector4D(-scaleX, -scaleY, scaleX, scaleY));
         m_program->setUniformValue("u_resolution", QVector2D(width, height));
         m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
-        m_program->setUniformValueArray("u_gradient_colors", colors, 4);
-        m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+        m_program->setUniformValue("u_stop_count", activeStopCount);
+        m_program->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+        m_program->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
         m_program->setUniformValue("u_fractal_type", m_fractalType);
         m_program->setUniformValue("u_aaSamples", m_aaSamples);
 
@@ -381,8 +390,10 @@ void FractalFBORenderer::render() {
         m_program->setUniformValue("u_resolution", QVector2D(width, height));
         m_program->setUniformValue("u_fractal_type", m_fractalType);
         m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
-        m_program->setUniformValueArray("u_gradient_colors", colors, 4);
-        m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+
+        m_program->setUniformValue("u_stop_count", activeStopCount);
+        m_program->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+        m_program->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
 
         m_program->enableAttributeArray(0);
         m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);
@@ -431,8 +442,9 @@ void FractalFBORenderer::render() {
         m_3dProgram->setUniformValue("u_cameraPos", cameraPosWorld);
         m_3dProgram->setUniformValue("u_maxIterations", m_maxIterations);
 
-        m_3dProgram->setUniformValueArray("u_gradient_colors", colors, 4);
-        m_3dProgram->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+        m_program->setUniformValue("u_stop_count", activeStopCount);
+        m_program->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+        m_program->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
 
         m_cubeVAO->bind();
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -475,38 +487,89 @@ void FractalFBORenderer::render() {
             m_isExportingBuddhabrot = true;
             m_exportPassCount = 0;
         } else {
-            // traditional escape fractals don't need multi-frame splits
+            // traditional single pass mode
             if (m_exportFbo->bind()) {
                 glViewport(0, 0, m_exportWidth, m_exportHeight);
-                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-                glClear(GL_COLOR_BUFFER_BIT);
 
-                m_program->bind();
-                m_program->setUniformValue("u_tile_bounds", QVector4D(-scaleX, -scaleY, scaleX, scaleY));
+                // 3d
+                if (m_is3DMode) {
+                    glEnable(GL_DEPTH_TEST);
+                    glDepthFunc(GL_LESS);
 
-                int expZoomLevel = m_program->uniformLocation("u_zoom_level");
-                int expZoomCenter = m_program->uniformLocation("u_zoom_center");
-                if (expZoomLevel != -1)  this->glUniform1d(expZoomLevel, m_targetZoom);
-                if (expZoomCenter != -1) this->glUniform2d(expZoomCenter, m_targetCenterX, m_targetCenterY);
+                    QVector3D bgColor = !m_gradientColors.isEmpty() ? m_gradientColors[0] : QVector3D(0.0f, 0.0f, 0.0f);
+                    glClearColor(bgColor.x(), bgColor.y(), bgColor.z(), 1.0f);
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-                m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
-                m_program->setUniformValue("u_fractal_type", m_fractalType);
-                m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
-                m_program->setUniformValueArray("u_gradient_colors", colors, 4);
-                m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+                    m_3dProgram->bind();
 
-                m_program->enableAttributeArray(0);
-                m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
-                m_program->disableAttributeArray(0);
-                m_program->release();
+                    // re calc projection matrix
+                    float aspect = (float)m_exportWidth / (float)m_exportHeight;
+                    QMatrix4x4 projection;
+                    projection.setToIdentity();
+                    projection.perspective(45.0f, aspect, 0.0f, 100.0f);
 
+                    QMatrix4x4 view;
+                    view.setToIdentity();
+                    view.translate(m_pan3D.x(), m_pan3D.y(), -m_zoom3D);
+
+                    QMatrix4x4 model;
+                    model.setToIdentity();
+                    model.rotate(this->m_rotation3D);
+
+                    QMatrix4x4 viewInverse = view.inverted();
+                    QVector3D cameraPosWorld = viewInverse.map(QVector3D(0.0f, 0.0f, 0.0f));
+
+                    m_3dProgram->setUniformValue("u_model", model);
+                    m_3dProgram->setUniformValue("u_view", view);
+                    m_3dProgram->setUniformValue("u_projection", projection);
+                    m_3dProgram->setUniformValue("u_cameraPos", cameraPosWorld);
+                    m_3dProgram->setUniformValue("u_maxIterations", m_maxIterations);
+                    m_program->setUniformValue("u_stop_count", activeStopCount);
+                    m_program->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+                    m_program->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
+
+                    m_cubeVAO->bind();
+                    glDrawArrays(GL_TRIANGLES, 0, 36);
+                    m_cubeVAO->release();
+                    m_3dProgram->release();
+
+                } else { // 2d stuff
+                    glDisable(GL_DEPTH_TEST);
+                    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+                    glClear(GL_COLOR_BUFFER_BIT);
+
+                    m_program->bind();
+                    m_program->setUniformValue("u_tile_bounds", QVector4D(-scaleX, -scaleY, scaleX, scaleY));
+
+                    int expZoomLevel = m_program->uniformLocation("u_zoom_level");
+                    int expZoomCenter = m_program->uniformLocation("u_zoom_center");
+                    if (expZoomLevel != -1) this->glUniform1d(expZoomLevel, m_targetZoom);
+                    if (expZoomCenter != -1) this->glUniform2d(expZoomCenter, m_targetCenterX, m_targetCenterY);
+
+                    m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
+                    m_program->setUniformValue("u_fractal_type", m_fractalType);
+                    m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
+                    m_program->setUniformValue("u_stop_count", activeStopCount);
+                    m_program->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+                    m_program->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
+
+                    m_program->enableAttributeArray(0);
+                    m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                    m_program->disableAttributeArray(0);
+                    m_program->release();
+                }
+
+                // capture and save the fbo
+                glFlush();
                 QImage masterImage = m_exportFbo->toImage().flipped(Qt::Vertical);
                 masterImage.save(m_exportFilename);
                 m_exportFbo->release();
                 delete m_exportFbo;
                 m_exportFbo = nullptr;
-                qDebug() << "saved standard high-res image successfully.";
+                qDebug() << "successfully saved render file to: " << m_exportFilename;
+
+                glViewport(0, 0, width, height);
             }
         }
     }
@@ -571,8 +634,9 @@ void FractalFBORenderer::render() {
                 m_program->setUniformValue("u_resolution", QVector2D(m_exportWidth, m_exportHeight));
                 m_program->setUniformValue("u_fractal_type", m_fractalType);
                 m_program->setUniformValue("u_max_iter", static_cast<float>(m_maxIterations));
-                m_program->setUniformValueArray("u_gradient_colors", colors, 4);
-                m_program->setUniformValueArray("u_gradient_stops", stops, 4, 1);
+                m_program->setUniformValue("u_stop_count", activeStopCount);
+                m_program->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+                m_program->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
 
                 m_program->enableAttributeArray(0);
                 m_program->setAttributeArray(0, GL_FLOAT, rawVertices, 3);

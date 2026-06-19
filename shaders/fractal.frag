@@ -10,8 +10,9 @@ uniform dvec2 u_zoom_center;
 uniform double u_zoom_level;
 uniform float u_max_iter;
 
-uniform vec3 u_gradient_colors[4];
-uniform float u_gradient_stops[4];
+uniform int u_stop_count;
+uniform vec3 u_gradient_colors[16];
+uniform float u_gradient_stops[16];
 
 uniform int u_fractal_type; // 0 = mandelbrot, 1 = julia
 uniform dvec2 u_julia_c;     // constant point
@@ -126,7 +127,8 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
 
         if (u_fractal_type <= 2) {
             // mandelbrot, julia, burning ship
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 15; i++) {
+                if (i >= u_stop_count - 1) break;
                 if (t >= u_gradient_stops[i] && t <= u_gradient_stops[i+1]) {
                     float factor = (t - u_gradient_stops[i]) / (u_gradient_stops[i+1] - u_gradient_stops[i]);
                     color = mix(u_gradient_colors[i], u_gradient_colors[i+1], factor);
@@ -137,7 +139,8 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
             // newton
             float smooth_t = fract(t * 15.0);
 
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 15; i++) {
+                if (i >= u_stop_count - 1) break;
                 if (smooth_t >= u_gradient_stops[i] && smooth_t <= u_gradient_stops[i+1]) {
                     float factor = (smooth_t - u_gradient_stops[i]) / (u_gradient_stops[i+1] - u_gradient_stops[i]);
                     color = mix(u_gradient_colors[i], u_gradient_colors[i+1], factor);
@@ -145,12 +148,17 @@ vec3 evaluateFractal(vec2 custom_v_coord) {
                 }
             }
 
+            // fallback blending masks
+            int c1 = min(1, u_stop_count - 1);
+            int c2 = min(2, u_stop_count - 1);
+            int c3 = min(3, u_stop_count - 1);
+
             if (z.x > 0.0) {
-                color = mix(color, u_gradient_colors[1], 0.25);
+                color = mix(color, u_gradient_colors[c1], 0.25);
             } else if (z.y > 0.0) {
-                color = mix(color, u_gradient_colors[2], 0.25);
+                color = mix(color, u_gradient_colors[c2], 0.25);
             } else {
-                color = mix(color, u_gradient_colors[3], 0.25);
+                color = mix(color, u_gradient_colors[c3], 0.25);
             }
         }
 
@@ -180,7 +188,9 @@ void main() {
         // map normalized scalar to gradient
         float t = clamp(normalizedHits, 0.0, 1.0);
         vec3 color = u_gradient_colors[0];
-        for (int i = 0; i < 3; i++) {
+
+        for (int i = 0; i < 15; i++) {
+            if (i >= u_stop_count - 1) break;
             if (t >= u_gradient_stops[i] && t <= u_gradient_stops[i+1]) {
                 float factor = (t - u_gradient_stops[i]) / (u_gradient_stops[i+1] - u_gradient_stops[i]);
                 color = mix(u_gradient_colors[i], u_gradient_colors[i+1], factor);

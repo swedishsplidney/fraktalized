@@ -8,8 +8,9 @@ uniform vec3 u_cameraPos;
 uniform int u_maxIterations;
 uniform mat4 u_model;
 
-uniform vec3 u_gradient_colors[4];
-uniform float u_gradient_stops[4];
+uniform int u_stop_count;
+uniform vec3 u_gradient_colors[16];
+uniform float u_gradient_stops[16];
 
 // signed distance function for mandelbulb
 float mandelbulbSDF(vec3 p, out float trap) {
@@ -127,9 +128,10 @@ void main() {
         float t = finalTrapValue;
         vec3 baseColor = vec3(0.5);
 
-        if (u_gradient_stops[1] > 0.0 || u_gradient_stops[2] > 0.0 || length(u_gradient_colors[1]) > 0.0) {
+        if (u_stop_count > 0) {
             baseColor = u_gradient_colors[0];
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 15; i++) {
+                if (i >= u_stop_count - 1) break;
                 if (t >= u_gradient_stops[i] && t <= u_gradient_stops[i+1]) {
                     float factor = (t - u_gradient_stops[i]) / (u_gradient_stops[i+1] - u_gradient_stops[i]);
                     baseColor = mix(u_gradient_colors[i], u_gradient_colors[i+1], factor);

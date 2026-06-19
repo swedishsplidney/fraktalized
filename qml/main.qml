@@ -471,6 +471,22 @@ Window {
                         updateEngineGradient();
                     }
 
+                    // delete stops
+                    function deleteStop(index) {
+                        if (stops.length <= 2) {
+                            console.warn("cannot delete stop, you need at least 2 stops!");
+                            return;
+                        }
+
+                        let currentStops = [...stops];
+                        // remove the stop
+                        currentStops.splice(index, 1);
+
+                        stops = currentStops;
+                        stopsChanged();
+                        updateEngineGradient();
+                    }
+
                     property var stops: [
                         { pos: 0.0, color: "#000000" },
                         { pos: 0.35, color: "#ff3300" },
@@ -507,6 +523,30 @@ Window {
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
                             id: visualGradient
+                        }
+
+                        // track handle additions / deletions
+                        MouseArea {
+                            anchors.fill: parent
+
+                            onDoubleClicked: (mouse) => {
+                                // calc click location
+                                let clickPct = mouse.x / width;
+
+                                // new stop
+                                let newStop = { pos: Math.max(0.0, Math.min(1.0, clickPct)), color: "#ffffff" };
+
+                                // js array reassignment
+                                let currentStops = [...gradientEditorContainer.stops];
+                                currentStops.push(newStop);
+
+                                // sort
+                                currentStops.sort((a, b) => a.pos - b.pos);
+
+                                // reassign arrays
+                                gradientEditorContainer.stops = currentStops;
+                                gradientEditorContainer.updateEngineGradient();
+                            }
                         }
 
                         Connections {
@@ -560,6 +600,7 @@ Window {
                                     drag.axis: Drag.XAxis
                                     drag.minimumX: 0
                                     drag.maximumX: handleTrack.width - handleAnchor.width
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
 
                                     // update data map when dragging
                                     onPositionChanged: {
@@ -575,10 +616,14 @@ Window {
                                     }
 
                                     // double click an anchor to change its color
-                                    onDoubleClicked: {
-                                        colorPicker.targetIndex = index
-                                        colorPicker.selectedColor = modelData.color
-                                        colorPicker.open()
+                                    onDoubleClicked: (mouse) => {
+                                        if (mouse.button === Qt.LeftButton) {
+                                            colorPicker.targetIndex = index
+                                            colorPicker.selectedColor = modelData.color
+                                            colorPicker.open()
+                                        } else if (mouse.button === Qt.RightButton) {
+                                            gradientEditorContainer.deleteStop(index);
+                                        }
                                     }
                                 }
                             }

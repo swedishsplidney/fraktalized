@@ -24,7 +24,7 @@ fragment `.frag`/`.vert`, and compute `.glsl` shader files.
 * **camera smoothing:** the camera system uses `lerp` (or `QQuaternion::slerp` in 3d) to make the camera feel very smooth and cinematic
 * **procedural gradient-based colors:** user controlled, real time, gradient-based color mapping system for beautiful, fully customizable color setup with a slight quadratic brightness boost at the edges.
 * **render to file:** you can render any fractal at any location easily with any custom resolution, just position the camera and change your settings to what you want, and hit render. to help prevent your graphics card from exploding, it also renders in 2000x2000px tiles.
-* **SSAA anti-aliasing:** utilizes super-sampling anti-aliasing to give super smooth looking visuals. you can choose off, 2x, or 3x ssaa, givinig smoother images at the cost of gpu usage
+* **SSAA anti-aliasing:** utilizes super-sampling anti-aliasing to give super smooth looking visuals. you can choose off, 2x, or 3x ssaa, giving smoother images at the cost of gpu usage
 * **JSON preset system:** you can save any color, position and zoom setup to a JSON file on your computer for later reference, in case you forget. it is also super easy to delete said JSON entries if you make a mistake
 * **adjustable resolution scale:** use the resolution scale slider to set your resolution anywhere from 25% to 150% of the active window resolution
 * **multiple fractal types:** fraktalized currently supports 4 distinct fractal types
