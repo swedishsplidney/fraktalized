@@ -76,11 +76,11 @@ for each pixel, the coordinates are mapped to a complex number $c = x + yi$, and
 
 $$Z_{n+1} = Z_n^2 + c$$ 
 
-however, because these are complex numbers, it expands to: 
+but because these are complex numbers, it expands to: 
 
 $$z^2 = (x + yi)^2 = x^2 - y^2 + 2xyi$$
 
-in the code, it gets split into its real and imaginary parts:
+and in the code, it gets split into its real and imaginary parts:
 
 * $x_{new} = x^2 - y^2 + c_{real}$
 * $y_{new} = 2xy + c_{imag}$
@@ -97,7 +97,7 @@ where $i$ is the raw iteration count at escape, and $|Z|$ is the magnitude of th
 
 this one is similar to 2d escape time, except instead of only rendering *when* a point escapes, trajectory rendering shows the path of the orbit that $Z$ takes across the complex plane during iterations.
 
-as $Z$ iterates through $Z_{n+1} = Z_n^2 + c$, its location is constantly compared against a shape (acting as an orbit trap). orbit traps can be almost anything, including lines, points or circles. the engine then determines the minimum distance $d$ between the points and the trap across all the iterations:
+as $Z$ iterates through $Z_{n+1} = Z_n^2 + c$, its location is constantly compared against a shape (acting as an orbit trap). orbit traps can be almost any shape, including lines, points or circles. the engine then determines the minimum distance $d$ between the points and the trap across all the iterations:
 
 $$d_{min} = \min_{k=0}^{N} \Big( \text{distance}(Z_k, \text{trap}) \Big)$$
 
