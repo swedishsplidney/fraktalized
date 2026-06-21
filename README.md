@@ -199,6 +199,10 @@ $$\text{Distance} = 0.5 \cdot \frac{r}{\ln(r)} \cdot dr$$
 * **scroll wheel:** zoom
 * **sidebar controls:** for iterations, color, adjusting julia set constant, rendering to file, and more
 * **settings panel:** for resolution scale and anti-aliasing
+* **3d mode:**
+    * click and drag: rotate
+    * scroll: zoom
+    * shift + click and drag: pan
 
 ---
 
