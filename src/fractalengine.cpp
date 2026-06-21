@@ -442,9 +442,12 @@ void FractalFBORenderer::render() {
         m_3dProgram->setUniformValue("u_cameraPos", cameraPosWorld);
         m_3dProgram->setUniformValue("u_maxIterations", m_maxIterations);
 
-        m_program->setUniformValue("u_stop_count", activeStopCount);
-        m_program->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
-        m_program->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
+        m_3dProgram->setUniformValue("u_stop_count", activeStopCount);
+        m_3dProgram->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+        m_3dProgram->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
+
+        m_3dProgram->setUniformValue("u_power", m_mandelbulbPower);
+        m_3dProgram->setUniformValue("u_brightness", m_fractalBrightness);
 
         m_cubeVAO->bind();
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -524,9 +527,11 @@ void FractalFBORenderer::render() {
                     m_3dProgram->setUniformValue("u_projection", projection);
                     m_3dProgram->setUniformValue("u_cameraPos", cameraPosWorld);
                     m_3dProgram->setUniformValue("u_maxIterations", m_maxIterations);
-                    m_program->setUniformValue("u_stop_count", activeStopCount);
-                    m_program->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
-                    m_program->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
+                    m_3dProgram->setUniformValue("u_stop_count", activeStopCount);
+                    m_3dProgram->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+                    m_3dProgram->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
+                    m_3dProgram->setUniformValue("u_power", m_mandelbulbPower);
+                    m_3dProgram->setUniformValue("u_brightness", m_fractalBrightness);
 
                     m_cubeVAO->bind();
                     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -784,6 +789,9 @@ void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
     this->setJuliaC(engine->juliaC());
 
     this->m_aaSamples = engine->aaSamples();
+
+    this->setMandelbulbPower(engine->mandelbulbPower());
+    this->setFractalBrightness(engine->fractalBrightness());
 
     // calc scaled viewport size
     QSize baseSize = engine->window() ? engine->window()->size() : QSize(1920, 1080);

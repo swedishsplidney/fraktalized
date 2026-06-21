@@ -51,6 +51,9 @@ public:
 
     void setJuliaC(const QVector2D &c) { m_juliaC = c; }
 
+    void setMandelbulbPower(float power) { m_mandelbulbPower = power; }
+    void setFractalBrightness(float b) { m_fractalBrightness = b; }
+
 private:
     bool m_initialized = false;
     QOpenGLShaderProgram *m_program = nullptr;
@@ -118,6 +121,9 @@ private:
 
     void updateAnimations();
 
+    float m_mandelbulbPower = 8.0f;
+    float m_fractalBrightness = 1.0f;
+
     void init();
 };
 
@@ -149,6 +155,9 @@ class FractalEngine : public QQuickFramebufferObject {
     Q_PROPERTY(QQuaternion rotation3D READ rotation3D WRITE setRotation3D NOTIFY rotation3DChanged)
     Q_PROPERTY(QVector3D pan3D READ pan3D WRITE setPan3D NOTIFY pan3DChanged)
     Q_PROPERTY(float zoom3D READ zoom3D WRITE setZoom3D NOTIFY zoom3DChanged)
+
+    Q_PROPERTY(float mandelbulbPower READ mandelbulbPower WRITE setMandelbulbPower NOTIFY mandelbulbPowerChanged)
+    Q_PROPERTY(float fractalBrightness READ fractalBrightness WRITE setFractalBrightness NOTIFY fractalBrightnessChanged)
 
 public:
     FractalEngine();
@@ -334,9 +343,33 @@ public:
     }
 
     Q_INVOKABLE void handle3DZoom(float angleDelta) {
-        m_targetZoom3D -= angleDelta * 0.002f;
-        if (m_targetZoom3D < 0.1f) m_targetZoom3D = 0.1f;
+        float dynamicSensitivity = 0.0005f * (m_targetZoom3D * m_targetZoom3D);
+
+        if (dynamicSensitivity < 0.00001f) dynamicSensitivity = 0.00001f;
+
+        m_targetZoom3D -= angleDelta * dynamicSensitivity;
+
+        if (m_targetZoom3D < 1e-6f) m_targetZoom3D = 1e-6f;
+
         update();
+    }
+
+    float mandelbulbPower() const { return m_mandelbulbPower; }
+    void setMandelbulbPower(float val) {
+        if (m_mandelbulbPower != val) {
+            m_mandelbulbPower = val;
+            emit mandelbulbPowerChanged();
+            update();
+        }
+    }
+
+    float fractalBrightness() const { return m_fractalBrightness; }
+    void setFractalBrightness(float val) {
+       if (m_fractalBrightness != val) {
+           m_fractalBrightness = val;
+           emit fractalBrightnessChanged();
+           update();
+       }
     }
 
 signals:
@@ -354,6 +387,8 @@ signals:
     void rotation3DChanged();
     void pan3DChanged();
     void zoom3DChanged();
+    void mandelbulbPowerChanged();
+    void fractalBrightnessChanged();
 
 private:
     int m_maxIterations = 100;
@@ -400,6 +435,9 @@ private:
     QVector3D m_targetPan3D = QVector3D(0.0f, 0.0f, 0.0f);
     float m_targetZoom3D = 3.0f;
     const float m_lerpFactor = 0.12f;
+
+    float m_mandelbulbPower = 8.0f;
+    float m_fractalBrightness = 1.0f;
 };
 
 #endif

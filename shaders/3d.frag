@@ -12,16 +12,23 @@ uniform int u_stop_count;
 uniform vec3 u_gradient_colors[16];
 uniform float u_gradient_stops[16];
 
+uniform vec2 u_resolution;
+
+uniform float u_power;
+uniform float u_brightness;
+
 // signed distance function for mandelbulb
 float mandelbulbSDF(vec3 p, out float trap) {
     vec3 w = p;
     float dr = 1.0;
     float r = 0.0;
-    float power = 8.0;
+    float power = u_power;
 
     float minDist = 1e10;
 
-    for (int i = 0; i < 50; i++) {
+    int iterations = clamp(u_maxIterations, 1, 5000);
+
+    for (int i = 0; i < iterations; i++) {
         r = length(w);
         if (r > 2.0) break;
 
@@ -100,6 +107,8 @@ void main() {
     float finalTrapValue = 0.0;
     float hitThreshold = 0.001;
 
+    float closestPassRatio = 1e10;
+
     for (int i = 0; i < maxSteps; i++) {
         vec3 currentWorldPos = rayOrigin + rayDir * totalDistance;
         vec3 currentLocalPos = (invModel * vec4(currentWorldPos, 1.0)).xyz;
@@ -108,6 +117,12 @@ void main() {
         float distanceToScene = mandelbulbSDF(currentLocalPos, currentTrap);
 
         hitThreshold = max(0.00005, 0.0001 * totalDistance);
+
+        vec2 res = (u_resolution.x  > 0.0) ? u_resolution : vec2(1920.0, 1080.0);
+        float pixelRadius = max(hitThreshold, totalDistance * (2.0 / res.y));
+
+        // track how close the ray skimmed
+        closestPassRatio = min(closestPassRatio, distanceToScene / pixelRadius);
 
         if (distanceToScene < hitThreshold) {
             hit = true;
@@ -119,6 +134,10 @@ void main() {
         totalDistance += distanceToScene;
         if (totalDistance > maxDrawDistance) break;
     }
+
+    vec3 backgroundColor = u_gradient_colors[0];
+
+    float edgeCoverage = clamp(1.0 - smoothstep(0.0, 1.0, closestPassRatio), 0.0, 1.0);
 
     // simple normal shading + ambient occlusion
     if (hit) {
@@ -163,11 +182,23 @@ void main() {
 
         vec3 finalColor = baseColor * (directLighting + ambientLight) * softAO;
 
+        finalColor *= u_brightness;
+
+        // exponential fog
+        float fogFactor = 1.0 - exp(-0.07 * totalDistance * totalDistance);
+        finalColor = mix(finalColor, backgroundColor, clamp(fogFactor, 0.0, 1.0));
+
+        if (totalDistance > maxDrawDistance * 0.8) {
+            float edgeFade = smoothstep(maxDrawDistance * 0.8, maxDrawDistance, totalDistance);
+            finalColor = mix(finalColor, backgroundColor, edgeFade);
+        }
+
         // gamma correction
         finalColor = pow(finalColor, vec3(1.0 / 2.0));
 
         fragColor = vec4(clamp(finalColor, 0.0, 1.0), 1.0);
     } else {
-        discard;
+        vec3 finalBackground = mix(backgroundColor, vec3(0.5, 0.6, 0.7) * 0.1, edgeCoverage);
+        fragColor = vec4(finalBackground, 1.0);
     }
 }

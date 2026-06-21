@@ -20,6 +20,9 @@ Window {
         fractalType: typeSelector.currentIndex
         juliaC: Qt.vector2d(parseFloat(realInput.text), parseFloat(imagInput.text))
 
+        mandelbulbPower: Math.round(powerSlider.value)
+        fractalBrightness: brightnessSlider.value
+
         viewportScale: resSlider.value
         aaSamples: aaSelector.currentIndex + 1
 
@@ -159,35 +162,47 @@ Window {
                         Layout.fillWidth: true
 
                         function applyDefaultView() {
-                            switch (currentIndex) {
-                                case 0: // mandelbrot
-                                    engine.zoomLevel = 2.0
-                                    engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
-                                    break;
-                                case 1: // julia
-                                    engine.zoomLevel = 2.0
-                                    engine.zoomCenter = Qt.vector2d(0.0, 0.0)
-                                    break;
-                                case 2: // burning ship
-                                    engine.zoomLevel = 0.1
-                                    engine.zoomCenter = Qt.vector2d(-1.755, -0.03)
-                                    break;
-                                case 3: // newton
-                                    engine.zoomLevel = 3.0
-                                    engine.zoomCenter = Qt.vector2d(0.0, 0.0)
-                                    break;
-                                case 4: // buddhabrot
-                                    engine.zoomLevel = 2.0
-                                    engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
-                                    break;
-                                case 5: // anti-buddhabrot
-                                    engine.zoomLevel = 2.0
-                                    engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
-                                    break;
-                                case 6: // barnsley fern
-                                    engine.zoomLevel = 9.0
-                                    engine.zoomCenter = Qt.vector2d(0.0, -5.0)
-                                    break;
+                            if (mode3DToggle.checked) {
+                                switch (currentIndex) {
+                                    case 0: // mandelbulb
+                                        engine.pan3D = Qt.vector3d(0, 0, 0);
+                                        engine.rotation3D = Qt.quaternion(1, 0, 0, 0);
+                                        engine.zoom3D = 3.0;
+                                        powerSlider.value = 8.0;
+                                        brightnessSlider.value = 1.0;
+                                        break;
+                                }
+                            } else {
+                                switch (currentIndex) {
+                                    case 0: // mandelbrot
+                                        engine.zoomLevel = 2.0
+                                        engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
+                                        break;
+                                    case 1: // julia
+                                        engine.zoomLevel = 2.0
+                                        engine.zoomCenter = Qt.vector2d(0.0, 0.0)
+                                        break;
+                                    case 2: // burning ship
+                                        engine.zoomLevel = 0.1
+                                        engine.zoomCenter = Qt.vector2d(-1.755, -0.03)
+                                        break;
+                                    case 3: // newton
+                                        engine.zoomLevel = 3.0
+                                        engine.zoomCenter = Qt.vector2d(0.0, 0.0)
+                                        break;
+                                    case 4: // buddhabrot
+                                        engine.zoomLevel = 2.0
+                                        engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
+                                        break;
+                                    case 5: // anti-buddhabrot
+                                        engine.zoomLevel = 2.0
+                                        engine.zoomCenter = Qt.vector2d(-0.5, 0.0)
+                                        break;
+                                    case 6: // barnsley fern
+                                        engine.zoomLevel = 9.0
+                                        engine.zoomCenter = Qt.vector2d(0.0, -5.0)
+                                        break;
+                                }
                             }
                         }
 
@@ -741,6 +756,183 @@ Window {
                                 selectByMouse: true
                                 color: "#ffffff"
                                 background: Rectangle { color: "#222222"; radius: 4 }
+                            }
+                        }
+                    }
+                }
+
+                // 3d options
+                ColumnLayout {
+                    spacing: 10
+                    Layout.fillWidth: true
+                    visible: engine.is3DMode
+
+                    Text {
+                        text: "3d stuff:"; color: "#8a90a6"; font.pixelSize: 12; font.family: "Monospace"
+                    }
+
+                    // power
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+
+                            Text {
+                                text: "• 3d power:"; color: "#8a90a6"; font.pixelSize: 11; font.family: "Monospace"
+                            }
+
+                            Slider {
+                                id: powerSlider
+                                Layout.fillWidth: true
+                                from: 2;
+                                to: 50;
+                                value: 8
+                                onPressedChanged: if (pressed) forceActiveFocus()
+                            }
+
+                            TextField {
+                                id: powerCurrentValueInput
+                                Layout.fillWidth: true
+                                height: 24
+                                leftPadding: 6
+                                color: activeFocus ? "#ffffff" : "#8a90a6"
+                                font.pixelSize: 10
+                                font.family: "Monospace"
+                                selectByMouse: true
+                                verticalAlignment: TextInput.AlignVCenter
+
+                                property bool isOutOfBounds: false
+
+                                Binding on text {
+                                    when: !powerCurrentValueInput.activeFocus && !powerCurrentValueInput.isOutOfBounds
+                                    value: "current: " + Math.round(powerSlider.value)
+                                }
+
+                                validator: IntValidator {
+                                    bottom: 0; top: 2147483647
+                                }
+
+                                background: Rectangle {
+                                    color: parent.activeFocus ? "#221133" : "transparent"
+                                    border.color: parent.activeFocus ? "#7d00ff" : "transparent"
+                                    border.width: 1; radius: 4
+                                }
+
+                                Timer {
+                                    id: powerResetTimer; interval: 1200
+                                    onTriggered: powerCurrentValueInput.isOutOfBounds = false
+                                }
+
+                                onEditingFinished: {
+                                    var val = parseInt(text)
+                                    if (!isNaN(val)) {
+                                        if ((val > powerSlider.to) || (val < powerSlider.from)) {
+                                            powerCurrentValueInput.isOutOfBounds = true
+                                            powerCurrentValueInput.text = "please choose a value from 2 - 50!"
+                                            powerResetTimer.restart()
+                                        }
+                                        val = Math.max(powerSlider.from, Math.min(val, powerSlider.to))
+                                        powerSlider.value = val
+                                    }
+                                    deselect(); focus = false
+                                    rootWindow.contentItem.focus = true
+                                    rootWindow.contentItem.forceActiveFocus()
+                                }
+
+                                onActiveFocusChanged: {
+                                    if (activeFocus) {
+                                        powerResetTimer.stop()
+                                        powerCurrentValueInput.isOutOfBounds = false
+                                        text = Math.round(powerSlider.value).toString()
+                                        selectAll()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 3d brightness
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+
+                            Text {
+                                text: "• 3d brightness:"; color: "#8a90a6"; font.pixelSize: 11; font.family: "Monospace"
+                            }
+
+                            Slider {
+                                Layout.fillWidth: true
+                                id: brightnessSlider
+                                from: 0.1
+                                to: 5
+                                value: 1
+                                onPressedChanged: if (pressed) forceActiveFocus()
+                            }
+
+                            TextField {
+                                id: brightnessCurrentValueInput
+                                Layout.fillWidth: true
+                                height: 24
+                                leftPadding: 6
+                                color: activeFocus ? "#ffffff" : "#8a90a6"
+                                font.pixelSize: 10
+                                font.family: "Monospace"
+                                selectByMouse: true
+                                verticalAlignment: TextInput.AlignVCenter
+
+                                property bool isOutOfBounds: false
+
+                                Binding on text {
+                                    when: !brightnessCurrentValueInput.activeFocus && !brightnessCurrentValueInput.isOutOfBounds
+                                    value: "current: " + brightnessSlider.value.toFixed(3)
+                                }
+
+                                validator: IntValidator {
+                                    bottom: 0; top: 2147483647
+                                }
+
+                                background: Rectangle {
+                                    color: parent.activeFocus ? "#221133" : "transparent"
+                                    border.color: parent.activeFocus ? "#7d00ff" : "transparent"
+                                    border.width: 1; radius: 4
+                                }
+
+                                Timer {
+                                    id: brightnessResetTimer; interval: 1200
+                                    onTriggered: brightnessCurrentValueInput.isOutOfBounds = false
+                                }
+
+                                onEditingFinished: {
+                                    var val = parseInt(text)
+                                    if (!isNaN(val)) {
+                                        if ((val > brightnessSlider.to) || (val < brightnessSlider.from)) {
+                                            brightnessCurrentValueInput.isOutOfBounds = true
+                                            brightnessCurrentValueInput.text = "please choose a value from 0.1 - 5!"
+                                            brightnessResetTimer.restart()
+                                        }
+                                        val = Math.max(brightnessSlider.from, Math.min(val, brightnessSlider.to))
+                                        brightnessSlider.value = val
+                                    }
+                                    deselect(); focus = false
+                                    rootWindow.contentItem.focus = true
+                                    rootWindow.contentItem.forceActiveFocus()
+                                }
+
+                                onActiveFocusChanged: {
+                                    if (activeFocus) {
+                                        brightnessResetTimer.stop()
+                                        brightnessCurrentValueInput.isOutOfBounds = false
+                                        text = Math.round(brightnessSlider.value).toString()
+                                        selectAll()
+                                    }
+                                }
                             }
                         }
                     }
