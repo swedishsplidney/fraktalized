@@ -23,14 +23,33 @@ Window {
         mandelbulbPower: Math.round(powerSlider.value)
         fractalBrightness: brightnessSlider.value
 
+        freeFlyMode: freeFlyToggle.checked
+
         viewportScale: resSlider.value
         aaSamples: aaSelector.currentIndex + 1
+
+        focus: true
+
+        Keys.onPressed: (event) => {
+            if (!event.isAutoRepeat) {
+                engine.handleKeyPress(event.key, true)
+                event.accepted = true
+            }
+        }
+        Keys.onReleased: (event) => {
+            if (!event.isAutoRepeat) {
+                engine.handleKeyPress(event.key, false)
+                event.accepted = true
+            }
+        }
+
+        Component.onCompleted: forceActiveFocus()
 
         // mouse interaction layer
         MouseArea {
             id: internalMouseArea
             anchors.fill: parent
-            acceptedButtons: Qt.LeftButton
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             hoverEnabled: true
 
             property point lastPos: Qt.point(0, 0)
@@ -39,28 +58,21 @@ Window {
 
             onPressed: (mouse) => {
                 lastPos = Qt.point(mouse.x, mouse.y)
-                sidebar.forceActiveFocus()
+                engine.forceActiveFocus()
             }
 
             onPositionChanged: (mouse) => {
                 if (width <= 0 || height <= 0) return;
 
+                let dx = mouse.x - lastPos.x
+                let dy = mouse.y - lastPos.y
+
                 // 3d stuff
                 if (engine.is3DMode) {
-                    if (mouse.buttons & Qt.LeftButton) {
-                        let dx = mouse.x - lastPos.x
-                        let dy = mouse.y - lastPos.y
-                        let isShift = (mouse.modifiers & Qt.ShiftModifier)
+                    let isShift = (mouse.modifiers & Qt.ShiftModifier) ? true : false
 
-                        if (isShift) {
-                            // panning
-                            engine.handle3DDrag(dx, dy, true)
-                        } else {
-                            // rotate
-                            engine.handle3DDrag(dx, dy, false)
-                        }
-                        lastPos = Qt.point(mouse.x, mouse.y)
-                    }
+                    engine.handle3DMouseMove(dx, dy, mouse.buttons, isShift)
+                    lastPos = Qt.point(mouse.x, mouse.y)
                 } else {
                     let pctX = mouse.x / width
                     let pctY = mouse.y / height
@@ -84,8 +96,6 @@ Window {
                     cursorY = currentY
 
                     if (mouse.buttons & Qt.LeftButton) {
-                        var dx = mouse.x - lastPos.x
-                        var dy = mouse.y - lastPos.y
                         engine.panCamera(dx, dy, parent.width, parent.height)
                         lastPos = Qt.point(mouse.x, mouse.y)
                     }
@@ -98,7 +108,23 @@ Window {
                 if (engine.is3DMode) {
                     let delta = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : wheel.pixelDelta.y * 4;
 
-                    engine.handle3DZoom(delta);
+                    if (engine.freeFlyMode) {
+                        let scaleFactor = 1.04;
+                        let newSens = engine.freeFlySens
+
+                        if (delta > 0) {
+                            newSens *= scaleFactor;
+                        } else {
+                            newSens /= scaleFactor;
+                        }
+
+                        if (newSens < 0.0001) newSens = 0.0001;
+                        if (newSens > 30) newSens = 30;
+
+                        engine.freeFlySens = newSens;
+                    } else {
+                        engine.handle3DZoom(delta);
+                    }
                 } else {
                     var zoomFactor = 1.15
                     if (wheel.angleDelta.y > 0) {
@@ -170,6 +196,8 @@ Window {
                                         engine.zoom3D = 3.0;
                                         powerSlider.value = 8.0;
                                         brightnessSlider.value = 1.0;
+                                        freeFlyToggle.checked = false;
+                                        engine.freeFlySens = 2.0;
                                         break;
                                 }
                             } else {
@@ -230,6 +258,12 @@ Window {
                         onToggled: {
                             typeSelector.applyDefaultView()
                             engine.is3DMode = checked;
+
+                            if (engine.is3DMode) {
+                                maxIterationsSlider.value = 15;
+                            } else {
+                                maxIterationsSlider.value = 100;
+                            }
                         }
                     }
                 }
@@ -767,8 +801,34 @@ Window {
                     Layout.fillWidth: true
                     visible: engine.is3DMode
 
-                    Text {
-                        text: "3d stuff:"; color: "#8a90a6"; font.pixelSize: 12; font.family: "Monospace"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        Text {
+                            text: "3d stuff:"; color: "#8a90a6"; font.pixelSize: 12; font.family: "Monospace"
+                        }
+
+                        Switch {
+                            id: freeFlyToggle
+                            text: freeFlyToggle.checked ? "wasd" : "classic"
+                            font.family: "Monospace"
+
+                            contentItem: Text {
+                                text: freeFlyToggle.text
+                                font: freeFlyToggle.font
+                                color: freeFlyToggle.checked ? "#7d00ff" : "#ffffff"
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: freeFlyToggle.indicator.width + freeFlyToggle.spacing
+                            }
+
+                            onToggled: {
+                                if (!checked) {
+                                    typeSelector.applyDefaultView();
+                                }
+                            }
+                        }
+
                     }
 
                     // power
@@ -1273,7 +1333,11 @@ Window {
             onClicked: {
                 typeSelector.applyDefaultView()
 
-                maxIterationsSlider.value = 100
+                if (engine.is3DMode) {
+                    maxIterationsSlider.value = 15
+                } else {
+                    maxIterationsSlider.value = 100
+                }
                 sidebar.forceActiveFocus()
             }
         }

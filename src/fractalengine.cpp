@@ -426,15 +426,26 @@ void FractalFBORenderer::render() {
 
         QMatrix4x4 view;
         view.setToIdentity();
-        view.translate(m_pan3D.x(), m_pan3D.y(), -m_zoom3D);
 
         QMatrix4x4 model;
         model.setToIdentity();
-        model.rotate(this->m_rotation3D);
+
+        if (!m_isFreeFlyMode) {
+            // normal mode
+            view.translate(m_pan3D.x(), m_pan3D.y(), -m_zoom3D);
+            view.rotate(m_rotation3D);
+        } else {
+            // wasd mode
+            view.rotate(m_rotation3D.conjugated());
+            view.translate(-m_pan3D);
+        }
 
         // calc camera pos
         QMatrix4x4 viewInverse = view.inverted();
         QVector3D cameraPosWorld = viewInverse.map(QVector3D(0.0f, 0.0f, 0.0f));
+
+        QMatrix4x4 rotMatrix;
+        rotMatrix.rotate(m_rotation3D);
 
         m_3dProgram->setUniformValue("u_model", model);
         m_3dProgram->setUniformValue("u_view", view);
@@ -448,6 +459,10 @@ void FractalFBORenderer::render() {
 
         m_3dProgram->setUniformValue("u_power", m_mandelbulbPower);
         m_3dProgram->setUniformValue("u_brightness", m_fractalBrightness);
+
+        m_3dProgram->setUniformValue("u_pan3D", m_pan3D);
+        m_3dProgram->setUniformValue("u_zoom3D", m_zoom3D);
+        m_3dProgram->setUniformValue("u_rotation3D", rotMatrix);
 
         m_cubeVAO->bind();
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -513,14 +528,25 @@ void FractalFBORenderer::render() {
 
                     QMatrix4x4 view;
                     view.setToIdentity();
-                    view.translate(m_pan3D.x(), m_pan3D.y(), -m_zoom3D);
 
                     QMatrix4x4 model;
                     model.setToIdentity();
-                    model.rotate(this->m_rotation3D);
+
+                    if (!m_isFreeFlyMode) {
+                        // original
+                        view.translate(m_pan3D.x(), m_pan3D.y(), -m_zoom3D);
+                        view.rotate(m_rotation3D);
+                    } else {
+                        // wasd
+                        view.rotate(m_rotation3D.conjugated());
+                        view.translate(-m_pan3D);
+                    }
 
                     QMatrix4x4 viewInverse = view.inverted();
                     QVector3D cameraPosWorld = viewInverse.map(QVector3D(0.0f, 0.0f, 0.0f));
+
+                    QMatrix4x4 rotMatrix;
+                    rotMatrix.rotate(m_rotation3D);
 
                     m_3dProgram->setUniformValue("u_model", model);
                     m_3dProgram->setUniformValue("u_view", view);
@@ -532,6 +558,9 @@ void FractalFBORenderer::render() {
                     m_3dProgram->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
                     m_3dProgram->setUniformValue("u_power", m_mandelbulbPower);
                     m_3dProgram->setUniformValue("u_brightness", m_fractalBrightness);
+                    m_3dProgram->setUniformValue("u_pan3D", m_pan3D);
+                    m_3dProgram->setUniformValue("u_zoom3D", m_zoom3D);
+                    m_3dProgram->setUniformValue("u_rotation3D", rotMatrix);
 
                     m_cubeVAO->bind();
                     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -678,7 +707,7 @@ void FractalFBORenderer::updateAnimations() {
     bool needsMoreUpdates = false;
 
     // zoom lerp
-    if (std::abs(m_zoom3D - m_targetZoom3D) > 0.001f) {
+    if (std::abs(m_zoom3D - m_targetZoom3D) > 0.00001f) {
         m_zoom3D = m_zoom3D + m_lerpFactor * (m_targetZoom3D - m_zoom3D);
         needsMoreUpdates = true;
     } else {
@@ -686,7 +715,7 @@ void FractalFBORenderer::updateAnimations() {
     }
 
     // pan lerp
-    if ((m_pan3D - m_targetPan3D).lengthSquared() > 0.00001f) {
+    if ((m_pan3D - m_targetPan3D).lengthSquared() > 0.0000001f) {
         m_pan3D = m_pan3D + m_lerpFactor * (m_targetPan3D - m_pan3D);
         needsMoreUpdates = true;
     } else {
@@ -694,7 +723,7 @@ void FractalFBORenderer::updateAnimations() {
     }
 
     // rotation slerp
-    if (QQuaternion::dotProduct(m_rotation3D, m_targetRotation3D) < 0.9999f) {
+    if (QQuaternion::dotProduct(m_rotation3D, m_targetRotation3D) < 0.999999f) {
         m_rotation3D = QQuaternion::slerp(m_rotation3D, m_targetRotation3D, m_lerpFactor);
         m_rotation3D.normalize();
         needsMoreUpdates = true;
@@ -771,11 +800,15 @@ void FractalEngine::setGradientPositions(const QVariantList &positions) {
 void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
     auto *engine = static_cast<FractalEngine *>(item);
 
+    engine->tickNavigation();
+
     this->m_is3DMode = engine->is3DMode();
 
     this->m_targetRotation3D = engine->rotation3D();
     this->m_targetPan3D = engine->pan3D();
     this->m_targetZoom3D = engine->zoom3D();
+
+    this->m_isFreeFlyMode = engine->freeFlyMode();
 
     this->setMaxIterations(engine->maxIterations());
 
@@ -1028,5 +1061,99 @@ void FractalEngine::deletePreset(const QString &name) {
         QJsonDocument doc(masterRoot);
         file.write(doc.toJson(QJsonDocument::Indented));
         file.close();
+    }
+}
+
+bool FractalEngine::handleKeyPress(int key, bool isPressed) {
+    if (isPressed) {
+        m_pressedKeys.insert(key);
+    } else {
+        m_pressedKeys.remove(key);
+    }
+
+    if (!m_frameTimer.isValid()) m_frameTimer.start();
+    update();
+    return true;
+}
+
+void FractalEngine::handle3DMouseMove(float dx, float dy, int buttons, bool isShiftPressed) {
+    // right click free look
+    if (buttons & Qt::RightButton || buttons & Qt::LeftButton) {
+        float sensitivity = 0.15f;
+
+        if (!m_isFreeFlyMode) {
+            QQuaternion localPitch = QQuaternion::fromAxisAndAngle(1.0f, 0.0f, 0.0f, -dy * sensitivity);
+            QQuaternion localYaw = QQuaternion::fromAxisAndAngle(0.0f, 1.0f, 0.0f, dx * sensitivity);
+
+            m_targetRotation3D = localPitch * m_targetRotation3D * localYaw;
+        } else {
+            m_freeFlyYaw += dx * sensitivity;
+            m_freeFlyPitch -= dy * sensitivity;
+
+            if (m_freeFlyPitch > 89.8f) m_freeFlyPitch = 89.8f;
+            if (m_freeFlyPitch < -89.8f) m_freeFlyPitch = -89.8f;
+
+            QQuaternion yawRotation = QQuaternion::fromAxisAndAngle(0.0f, 1.0f, 0.0f, m_freeFlyYaw);
+            QQuaternion pitchRotation = QQuaternion::fromAxisAndAngle(1.0f, 0.0f, 0.0f, m_freeFlyPitch);
+
+            m_targetRotation3D = yawRotation * pitchRotation;
+        }
+
+        m_targetRotation3D.normalize();
+        update();
+    }
+    else if (buttons & Qt::LeftButton) {
+        if (!m_isFreeFlyMode) {
+            handle3DDrag(dx, dy, isShiftPressed);
+        }
+    }
+}
+
+void FractalEngine::updateKeyboardNavigation(float deltaTime) {
+    if (!m_is3DMode || !m_isFreeFlyMode || m_pressedKeys.isEmpty()) return;
+
+    float speed = freeFlySens() * deltaTime;
+
+    QVector3D forward = m_targetRotation3D.rotatedVector(QVector3D(0.0f, 0.0f, -1.0f)).normalized();
+    QVector3D right   = m_targetRotation3D.rotatedVector(QVector3D(1.0f, 0.0f, 0.0f)).normalized();
+    QVector3D up      = QVector3D(0.0f, 1.0f, 0.0f);
+
+    QVector3D moveDelta(0.0f, 0.0f, 0.0f);
+
+    if (m_pressedKeys.contains(Qt::Key_W)) moveDelta += forward;
+    if (m_pressedKeys.contains(Qt::Key_S)) moveDelta -= forward;
+    if (m_pressedKeys.contains(Qt::Key_D)) moveDelta += right;
+    if (m_pressedKeys.contains(Qt::Key_A)) moveDelta -= right;
+    if (m_pressedKeys.contains(Qt::Key_Q) || m_pressedKeys.contains(Qt::Key_Space)) moveDelta -= up;
+    if (m_pressedKeys.contains(Qt::Key_E) || m_pressedKeys.contains(Qt::Key_Shift)) moveDelta += up;
+
+    if (!moveDelta.isNull()) {
+        m_targetPan3D += moveDelta.normalized() * speed;
+        update();
+    }
+
+}
+
+void FractalEngine::tickNavigation() {
+    if (!m_is3DMode || !m_isFreeFlyMode) return;
+
+    if (!m_frameTimer.isValid()) {
+        m_frameTimer.start();
+        return;
+    }
+
+    float elapsed = m_frameTimer.restart() / 1000.0f;
+    if (elapsed > 0.05f) elapsed = 0.05f;
+
+    if (!m_pressedKeys.isEmpty()) {
+        updateKeyboardNavigation(elapsed);
+        update();
+    } else {
+        bool isStillMoving = (m_pan3D - m_targetPan3D).length() > 0.0000001f;
+        bool isStillRotating = QQuaternion::dotProduct(m_rotation3D, m_targetRotation3D) < 0.999999f;
+
+        if (isStillMoving || isStillRotating) {
+            update();
+        }
     }
 }

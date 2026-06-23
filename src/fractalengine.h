@@ -21,6 +21,8 @@
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLBuffer>
 #include <QQuaternion>
+#include <QSet>
+#include <QElapsedTimer>
 
 #include "fractalengine.h"
 
@@ -124,6 +126,8 @@ private:
     float m_mandelbulbPower = 8.0f;
     float m_fractalBrightness = 1.0f;
 
+    bool m_isFreeFlyMode = false;
+
     void init();
 };
 
@@ -158,6 +162,8 @@ class FractalEngine : public QQuickFramebufferObject {
 
     Q_PROPERTY(float mandelbulbPower READ mandelbulbPower WRITE setMandelbulbPower NOTIFY mandelbulbPowerChanged)
     Q_PROPERTY(float fractalBrightness READ fractalBrightness WRITE setFractalBrightness NOTIFY fractalBrightnessChanged)
+    Q_PROPERTY(bool freeFlyMode READ freeFlyMode WRITE setFreeFlyMode NOTIFY freeFlyModeChanged)
+    Q_PROPERTY(float freeFlySens READ freeFlySens WRITE setFreeFlySens NOTIFY freeFlySensChanged)
 
 public:
     FractalEngine();
@@ -372,6 +378,48 @@ public:
        }
     }
 
+    Q_INVOKABLE bool handleKeyPress(int key, bool isPressed);
+    Q_INVOKABLE void handle3DMouseMove(float dx, float dy, int buttons, bool isShiftPressed);
+
+    void tickNavigation();
+
+    bool freeFlyMode() const { return m_isFreeFlyMode; }
+    void setFreeFlyMode(bool enabled) {
+        if (m_isFreeFlyMode != enabled) {
+            m_isFreeFlyMode = enabled;
+
+            if (m_isFreeFlyMode) {
+                QVector3D direction = m_targetRotation3D.rotatedVector(QVector3D(0.0f, 0.0f, -1.0f));
+
+                m_freeFlyYaw = qRadiansToDegrees(std::atan2(-direction.x(), -direction.z()));
+                float len = std::sqrt(direction.x() * direction.x() + direction.z() * direction.z());
+                m_freeFlyPitch = qRadiansToDegrees(std::atan2(direction.y(), len));
+
+                QQuaternion yawRotation = QQuaternion::fromAxisAndAngle(0.0f, 1.0f, 0.0f, m_freeFlyYaw);
+                QQuaternion pitchRotation = QQuaternion::fromAxisAndAngle(1.0f, 0.0f, 0.0f, m_freeFlyPitch);
+                m_targetRotation3D = yawRotation * pitchRotation;
+
+                QVector3D orbitCameraPos = m_targetRotation3D.rotatedVector(QVector3D(0.0f, 0.0f, m_targetZoom3D)) + QVector3D(-m_targetPan3D.x(), -m_targetPan3D.y(), 0.0f);
+                m_targetPan3D = orbitCameraPos;
+            } else {
+                m_targetPan3D = QVector3D(0.0f, 0.0f, 0.0f);
+                m_targetZoom3D = 3.0f;
+            }
+
+            emit freeFlyModeChanged();
+            update();
+        }
+    }
+
+    float freeFlySens() const { return m_freeFlySens; }
+    void setFreeFlySens(float val) {
+        if (m_freeFlySens != val) {
+            m_freeFlySens = val;
+            emit freeFlySensChanged();
+            update();
+        }
+    }
+
 signals:
     void maxIterationsChanged();
     void gradientColorsChanged();
@@ -389,6 +437,8 @@ signals:
     void zoom3DChanged();
     void mandelbulbPowerChanged();
     void fractalBrightnessChanged();
+    void freeFlyModeChanged();
+    void freeFlySensChanged();
 
 private:
     int m_maxIterations = 100;
@@ -438,6 +488,16 @@ private:
 
     float m_mandelbulbPower = 8.0f;
     float m_fractalBrightness = 1.0f;
+
+    QSet<int> m_pressedKeys;
+    QElapsedTimer m_frameTimer;
+    void updateKeyboardNavigation(float deltaTime);
+
+    bool m_isFreeFlyMode = false;
+
+    float m_freeFlyPitch = 0.0f;
+    float m_freeFlyYaw = 0.0f;
+    float m_freeFlySens = 2.0f;
 };
 
 #endif
