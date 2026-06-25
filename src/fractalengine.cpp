@@ -86,6 +86,13 @@ void FractalFBORenderer::init() {
     m_3dProgram->bindAttributeLocation("aColor", 1);
     m_3dProgram->link();
 
+    m_mengerProgram = new QOpenGLShaderProgram();
+    m_mengerProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/3d.vert");
+    m_mengerProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/menger.frag");
+    m_mengerProgram->bindAttributeLocation("aPos", 0);
+    m_mengerProgram->bindAttributeLocation("aColor", 1);
+    m_mengerProgram->link();
+
     // cube vertex data
     GLfloat cubeVertices[] = {
         // front face
@@ -407,7 +414,9 @@ void FractalFBORenderer::render() {
     // 3d render
     if (m_is3DMode) {
         updateAnimations();
-        m_3dProgram->bind();
+
+        QOpenGLShaderProgram *activeProgram = (m_fractalType == 1) ? m_mengerProgram : m_3dProgram;
+        activeProgram->bind();
 
         QVector3D bgColor = !m_gradientColors.isEmpty() ? m_gradientColors[0] : QVector3D(0.0f, 0.0f, 0.0f);
         this->glClearColor(bgColor.x(), bgColor.y(), bgColor.z(), 1.0f);
@@ -422,7 +431,7 @@ void FractalFBORenderer::render() {
 
         QMatrix4x4 projection;
         projection.setToIdentity();
-        projection.perspective(45.0f, (float)width / (float)height, 0.0f, 100.0f);
+        projection.perspective(45.0f, (float)width / (float)height, 0.0001f, 100.0f);
 
         QMatrix4x4 view;
         view.setToIdentity();
@@ -447,28 +456,28 @@ void FractalFBORenderer::render() {
         QMatrix4x4 rotMatrix;
         rotMatrix.rotate(m_rotation3D);
 
-        m_3dProgram->setUniformValue("u_model", model);
-        m_3dProgram->setUniformValue("u_view", view);
-        m_3dProgram->setUniformValue("u_projection", projection);
-        m_3dProgram->setUniformValue("u_cameraPos", cameraPosWorld);
-        m_3dProgram->setUniformValue("u_maxIterations", m_maxIterations);
+        activeProgram->setUniformValue("u_model", model);
+        activeProgram->setUniformValue("u_view", view);
+        activeProgram->setUniformValue("u_projection", projection);
+        activeProgram->setUniformValue("u_cameraPos", cameraPosWorld);
+        activeProgram->setUniformValue("u_maxIterations", m_maxIterations);
 
-        m_3dProgram->setUniformValue("u_stop_count", activeStopCount);
-        m_3dProgram->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
-        m_3dProgram->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
+        activeProgram->setUniformValue("u_stop_count", activeStopCount);
+        activeProgram->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+        activeProgram->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
 
-        m_3dProgram->setUniformValue("u_power", m_mandelbulbPower);
-        m_3dProgram->setUniformValue("u_brightness", m_fractalBrightness);
+        activeProgram->setUniformValue("u_power", m_mandelbulbPower);
+        activeProgram->setUniformValue("u_brightness", m_fractalBrightness);
 
-        m_3dProgram->setUniformValue("u_pan3D", m_pan3D);
-        m_3dProgram->setUniformValue("u_zoom3D", m_zoom3D);
-        m_3dProgram->setUniformValue("u_rotation3D", rotMatrix);
+        activeProgram->setUniformValue("u_pan3D", m_pan3D);
+        activeProgram->setUniformValue("u_zoom3D", m_zoom3D);
+        activeProgram->setUniformValue("u_rotation3D", rotMatrix);
 
         m_cubeVAO->bind();
         glDrawArrays(GL_TRIANGLES, 0, 36);
         m_cubeVAO->release();
-        m_3dProgram->release();
-        update();
+        activeProgram->release();
+        // update();
     }
 
     // render to file engine
@@ -809,6 +818,8 @@ void FractalFBORenderer::synchronize(QQuickFramebufferObject *item) {
     this->m_targetZoom3D = engine->zoom3D();
 
     this->m_isFreeFlyMode = engine->freeFlyMode();
+
+    this->m_fractalType = engine->fractalType();
 
     this->setMaxIterations(engine->maxIterations());
 

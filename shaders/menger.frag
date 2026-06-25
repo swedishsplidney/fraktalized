@@ -30,12 +30,19 @@ float mengerSpongeSDF(vec3 p, out float trap) {
     float minDist = 1e10;
     float s = 1.0;
 
-    int iterations = clamp(u_maxIterations, 1, 8);
+    int iterations = clamp(u_maxIterations, 1, 20);
 
     for (int m = 0; m < iterations; m++) {
         vec3 a = mod(p * s, 2.0) - 1.0;
         s *= 3.0;
         vec3 r = abs(1.0 - 3.0 * abs(a));
+
+        float da = max(r.x, r.y);
+        float db = max(r.y, r.z);
+        float dc = max(r.z, r.x);
+        float c = (min(da, min(db, dc)) - 1.0) / s;
+
+        minDist = min(minDist, dot(a, a));
 
         d = max(d, c);
     }

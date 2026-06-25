@@ -105,6 +105,7 @@ private:
     const int m_maxViewPasses = 10;
 
     QOpenGLShaderProgram *m_3dProgram = nullptr;
+    QOpenGLShaderProgram *m_mengerProgram = nullptr;
     bool m_is3DMode = false;
 
     QOpenGLVertexArrayObject *m_cubeVAO = nullptr;

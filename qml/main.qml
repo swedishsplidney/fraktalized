@@ -184,7 +184,7 @@ Window {
 
                     ComboBox {
                         id: typeSelector
-                        model: mode3DToggle.checked ? ["mandelbulb"] : ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
+                        model: mode3DToggle.checked ? ["mandelbulb", "menger sponge"] : ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
                         Layout.fillWidth: true
 
                         function applyDefaultView() {
@@ -198,9 +198,30 @@ Window {
                                         brightnessSlider.value = 1.0;
                                         freeFlyToggle.checked = false;
                                         engine.freeFlySens = 2.0;
+                                        maxIterationsSlider.from = 1;
+                                        minLimitInput.text = "1";
+                                        maxIterationsSlider.to = 30;
+                                        maxLimitInput.text = "30";
+                                        maxIterationsSlider.value = 15;
+                                        break;
+                                    case 1: // menger sponge
+                                        engine.pan3D = Qt.vector3d(0, 0, 0);
+                                        engine.rotation3D = Qt.quaternion(1, 0, 0, 0);
+                                        engine.zoom3D = 3.0;
+                                        powerSlider.value = 8.0;
+                                        brightnessSlider.value = 1.0;
+                                        freeFlyToggle.checked = false;
+                                        engine.freeFlySens = 2.0;
+                                        maxIterationsSlider.from = 1;
+                                        minLimitInput.text = "1";
+                                        maxIterationsSlider.to = 12;
+                                        maxLimitInput.text = "12";
+                                        maxIterationsSlider.value = 8;
                                         break;
                                 }
                             } else {
+                                minLimitInput.text = "10";
+                                maxLimitInput.text = "500";
                                 switch (currentIndex) {
                                     case 0: // mandelbrot
                                         engine.zoomLevel = 2.0
