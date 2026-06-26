@@ -9,6 +9,9 @@ jobs:
   build:
     name: build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    # set perms
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -16,14 +19,17 @@ jobs:
           - os: ubuntu-latest
             qt-platform: desktop
             artifact-name: fraktalized-linux
+            file-name: fraktalized-linux-${{ github.ref_name }}.tar.gz
             qt-arch: ''
           - os: windows-latest
             qt-platform: desktop
             artifact-name: fraktalized-windows
+            file-name: fraktalized-windows-${{ github.ref_name }}.zip
             qt-arch: win64_msvc2022_64
           - os: macos-latest
             qt-platform: desktop
             artifact-name: fraktalized-mac
+            file-name: fraktalized-mac-${{ github.ref_name }}.dmg
             qt-arch: ''
 
     steps:
@@ -110,20 +116,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
-          path: |
-            fraktalized-windows-${{ github.ref_name }}.zip
-            fraktalized-mac-${{ github.ref_name }}.dmg
-            fraktalized-linux-${{ github.ref_name }}.tar.gz
+          path: ${{ matrix.file-name }}
           if-no-files-found: ignore
 
-      # push assets to release page
+      # push to release page
       - name: upload binaries to github release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            fraktalized-windows-${{ github.ref_name }}.zip
-            fraktalized-mac-${{ github.ref_name }}.dmg
-            fraktalized-linux-${{ github.ref_name }}.tar.gz
-          fail_on_unmatched_files: false
+          files: ${{ matrix.file-name }}
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
