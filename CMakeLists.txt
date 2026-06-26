@@ -8,6 +8,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+if(APPLE)
+    add_library(WrapOpenGL::AGL INTERFACE IMPORTED)
+    set_target_properties(WrapOpenGL::AGL PROPERTIES INTERFACE_LINK_LIBRARIES "")
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Widgets OpenGL)
 
 add_executable(${PROJECT_NAME}

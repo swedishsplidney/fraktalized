@@ -58,12 +58,6 @@ jobs:
           target: ${{ matrix.qt-platform }}
           arch: ${{ matrix.qt-arch }}
 
-      # qt hotfix
-      - name: patch qt agl framework
-        if: matrix.os == 'macos-latest'
-        run: |
-          find /Users/runner/Qt -name "FindWrapOpenGL.cmake" -exec sed -i '' 's/-framework AGL//g' {} +
-
       # configure cmake
       - name: configure cmake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'macos-latest' && '-DCMAKE_MACOSX_BUNDLE=ON' || '' }}
@@ -84,8 +78,6 @@ jobs:
       - name: package macos app
         if: matrix.os == 'macos-latest'
         run: |
-          export PATH="/Users/runner/Qt/6.8.3/macos/bin:$PATH"
-          
           APP_PATH=$(find build -name "fraktalized.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "Error: Could not find fraktalized.app bundle anywhere in build directory."
