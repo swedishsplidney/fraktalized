@@ -385,7 +385,9 @@ void FractalFBORenderer::render() {
             }
 
             // wait until atomic stores finish
+#ifndef Q_OS_MAC
             gl43->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+#endif
             glUseProgram(0);
 
             m_viewPassCount++;
@@ -628,7 +630,7 @@ void FractalFBORenderer::render() {
 
                 // capture and save the fbo
                 glFlush();
-                QImage masterImage = m_exportFbo->toImage().flipped(Qt::Vertical);
+                QImage masterImage = m_exportFbo->toImage().mirrored(false, true);
                 masterImage.save(m_exportFilename);
                 m_exportFbo->release();
                 delete m_exportFbo;
@@ -673,7 +675,9 @@ void FractalFBORenderer::render() {
         }
 
 
+#ifndef Q_OS_MAC
         gl43->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+#endif
         glUseProgram(0);
 
         m_exportPassCount++;
@@ -712,7 +716,7 @@ void FractalFBORenderer::render() {
 
                 glFlush();
 
-                QImage masterImage = m_exportFbo->toImage().flipped(Qt::Vertical);
+                QImage masterImage = m_exportFbo->toImage().mirrored(false, true);
                 if (masterImage.save(m_exportFilename)) {
                     qDebug() << "completed export:" << m_exportFilename;
                 } else {
@@ -1123,7 +1127,7 @@ void FractalEngine::handle3DMouseMove(float dx, float dy, int buttons, bool isSh
         if (!m_isFreeFlyMode) {
             QQuaternion localPitch = QQuaternion::fromAxisAndAngle(1.0f, 0.0f, 0.0f, -dy * sensitivity);
             QQuaternion localYaw = QQuaternion::fromAxisAndAngle(0.0f, 1.0f, 0.0f, dx * sensitivity);
-            
+
             m_targetRotation3D = localPitch * m_targetRotation3D * localYaw;
         } else {
             m_freeFlyYaw += dx * sensitivity;
