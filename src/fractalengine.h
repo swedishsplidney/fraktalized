@@ -106,6 +106,7 @@ private:
 
     QOpenGLShaderProgram *m_3dProgram = nullptr;
     QOpenGLShaderProgram *m_mengerProgram = nullptr;
+    QOpenGLShaderProgram *m_iceboxProgram = nullptr;
     bool m_is3DMode = false;
 
     QOpenGLVertexArrayObject *m_cubeVAO = nullptr;

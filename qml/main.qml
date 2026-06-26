@@ -184,7 +184,7 @@ Window {
 
                     ComboBox {
                         id: typeSelector
-                        model: mode3DToggle.checked ? ["mandelbulb", "menger sponge"] : ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
+                        model: mode3DToggle.checked ? ["mandelbulb", "menger sponge", "icebox"] : ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
                         Layout.fillWidth: true
 
                         function applyDefaultView() {
@@ -217,6 +217,20 @@ Window {
                                         maxIterationsSlider.to = 12;
                                         maxLimitInput.text = "12";
                                         maxIterationsSlider.value = 8;
+                                        break;
+                                    case 2: // icebox
+                                        engine.pan3D = Qt.vector3d(0, 0, 0);
+                                        engine.rotation3D = Qt.quaternion(1, 0, 0, 0);
+                                        engine.zoom3D = 3.0;
+                                        powerSlider.value = 8.0;
+                                        brightnessSlider.value = 1.0;
+                                        freeFlyToggle.checked = false;
+                                        engine.freeFlySens = 2.0;
+                                        maxIterationsSlider.from = 1;
+                                        minLimitInput.text = "1";
+                                        maxIterationsSlider.to = 64;
+                                        maxLimitInput.text = "64";
+                                        maxIterationsSlider.value = 16;
                                         break;
                                 }
                             } else {
@@ -777,7 +791,7 @@ Window {
                 ColumnLayout {
                     spacing: 8
                     Layout.fillWidth: true
-                    visible: typeSelector.currentIndex === 1
+                    visible: (typeSelector.currentIndex === 1 && engine.is3DMode == false)
 
                     Text { text: "julia constant (c):"; color: "#8a90a6"; font.pixelSize: 12; font.family: "Monospace" }
 

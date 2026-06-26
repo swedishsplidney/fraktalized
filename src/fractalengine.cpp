@@ -93,6 +93,13 @@ void FractalFBORenderer::init() {
     m_mengerProgram->bindAttributeLocation("aColor", 1);
     m_mengerProgram->link();
 
+    m_iceboxProgram = new QOpenGLShaderProgram();
+    m_iceboxProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/3d.vert");
+    m_iceboxProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/icebox.frag");
+    m_iceboxProgram->bindAttributeLocation("aPos", 0);
+    m_iceboxProgram->bindAttributeLocation("aColor", 1);
+    m_iceboxProgram->link();
+
     // cube vertex data
     GLfloat cubeVertices[] = {
         // front face
@@ -415,7 +422,15 @@ void FractalFBORenderer::render() {
     if (m_is3DMode) {
         updateAnimations();
 
-        QOpenGLShaderProgram *activeProgram = (m_fractalType == 1) ? m_mengerProgram : m_3dProgram;
+        QOpenGLShaderProgram *activeProgram = nullptr;
+        if (m_fractalType == 0) {
+            activeProgram = m_3dProgram;
+        } else if (m_fractalType == 1) {
+            activeProgram = m_mengerProgram;
+        } else if (m_fractalType == 2) {
+            activeProgram = m_iceboxProgram;
+        }
+
         activeProgram->bind();
 
         QVector3D bgColor = !m_gradientColors.isEmpty() ? m_gradientColors[0] : QVector3D(0.0f, 0.0f, 0.0f);
@@ -477,7 +492,6 @@ void FractalFBORenderer::render() {
         glDrawArrays(GL_TRIANGLES, 0, 36);
         m_cubeVAO->release();
         activeProgram->release();
-        // update();
     }
 
     // render to file engine
@@ -523,11 +537,20 @@ void FractalFBORenderer::render() {
                     glEnable(GL_DEPTH_TEST);
                     glDepthFunc(GL_LESS);
 
+                    QOpenGLShaderProgram *activeProgram = nullptr;
+                    if (m_fractalType == 0) {
+                        activeProgram = m_3dProgram;
+                    } else if (m_fractalType == 1) {
+                        activeProgram = m_mengerProgram;
+                    } else if (m_fractalType == 2) {
+                        activeProgram = m_iceboxProgram;
+                    }
+
+                    activeProgram->bind();
+
                     QVector3D bgColor = !m_gradientColors.isEmpty() ? m_gradientColors[0] : QVector3D(0.0f, 0.0f, 0.0f);
                     glClearColor(bgColor.x(), bgColor.y(), bgColor.z(), 1.0f);
                     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-                    m_3dProgram->bind();
 
                     // re calc projection matrix
                     float aspect = (float)m_exportWidth / (float)m_exportHeight;
@@ -557,24 +580,24 @@ void FractalFBORenderer::render() {
                     QMatrix4x4 rotMatrix;
                     rotMatrix.rotate(m_rotation3D);
 
-                    m_3dProgram->setUniformValue("u_model", model);
-                    m_3dProgram->setUniformValue("u_view", view);
-                    m_3dProgram->setUniformValue("u_projection", projection);
-                    m_3dProgram->setUniformValue("u_cameraPos", cameraPosWorld);
-                    m_3dProgram->setUniformValue("u_maxIterations", m_maxIterations);
-                    m_3dProgram->setUniformValue("u_stop_count", activeStopCount);
-                    m_3dProgram->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
-                    m_3dProgram->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
-                    m_3dProgram->setUniformValue("u_power", m_mandelbulbPower);
-                    m_3dProgram->setUniformValue("u_brightness", m_fractalBrightness);
-                    m_3dProgram->setUniformValue("u_pan3D", m_pan3D);
-                    m_3dProgram->setUniformValue("u_zoom3D", m_zoom3D);
-                    m_3dProgram->setUniformValue("u_rotation3D", rotMatrix);
+                    activeProgram->setUniformValue("u_model", model);
+                    activeProgram->setUniformValue("u_view", view);
+                    activeProgram->setUniformValue("u_projection", projection);
+                    activeProgram->setUniformValue("u_cameraPos", cameraPosWorld);
+                    activeProgram->setUniformValue("u_maxIterations", m_maxIterations);
+                    activeProgram->setUniformValue("u_stop_count", activeStopCount);
+                    activeProgram->setUniformValueArray("u_gradient_colors", colors.data(), activeStopCount);
+                    activeProgram->setUniformValueArray("u_gradient_stops", stops.data(), activeStopCount, 1);
+                    activeProgram->setUniformValue("u_power", m_mandelbulbPower);
+                    activeProgram->setUniformValue("u_brightness", m_fractalBrightness);
+                    activeProgram->setUniformValue("u_pan3D", m_pan3D);
+                    activeProgram->setUniformValue("u_zoom3D", m_zoom3D);
+                    activeProgram->setUniformValue("u_rotation3D", rotMatrix);
 
                     m_cubeVAO->bind();
                     glDrawArrays(GL_TRIANGLES, 0, 36);
                     m_cubeVAO->release();
-                    m_3dProgram->release();
+                    activeProgram->release();
 
                 } else { // 2d stuff
                     glDisable(GL_DEPTH_TEST);
@@ -1088,14 +1111,19 @@ bool FractalEngine::handleKeyPress(int key, bool isPressed) {
 }
 
 void FractalEngine::handle3DMouseMove(float dx, float dy, int buttons, bool isShiftPressed) {
-    // right click free look
-    if (buttons & Qt::RightButton || buttons & Qt::LeftButton) {
+    // classic pan
+    if ((buttons & Qt::LeftButton) && isShiftPressed && !m_isFreeFlyMode) {
+        handle3DDrag(dx, dy, isShiftPressed);
+    }
+
+    // free look
+    else if ((buttons & Qt::RightButton) || (buttons & Qt::LeftButton)) {
         float sensitivity = 0.15f;
 
         if (!m_isFreeFlyMode) {
             QQuaternion localPitch = QQuaternion::fromAxisAndAngle(1.0f, 0.0f, 0.0f, -dy * sensitivity);
             QQuaternion localYaw = QQuaternion::fromAxisAndAngle(0.0f, 1.0f, 0.0f, dx * sensitivity);
-
+            
             m_targetRotation3D = localPitch * m_targetRotation3D * localYaw;
         } else {
             m_freeFlyYaw += dx * sensitivity;
@@ -1112,11 +1140,6 @@ void FractalEngine::handle3DMouseMove(float dx, float dy, int buttons, bool isSh
 
         m_targetRotation3D.normalize();
         update();
-    }
-    else if (buttons & Qt::LeftButton) {
-        if (!m_isFreeFlyMode) {
-            handle3DDrag(dx, dy, isShiftPressed);
-        }
     }
 }
 
