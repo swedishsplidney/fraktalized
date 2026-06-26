@@ -1,0 +1,94 @@
+name: compile and release binaries
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    name: build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-lastest
+            qt-platform: desktop
+            artifact-name: fraktalized-linux
+          - os: windows-latest
+            qt-platform: desktop
+            artifact-name: fraktalized-windows
+          - os: macos-latest
+            qt-platform: desktop
+            artifact-name: fraktalized-mac
+
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # linux depends
+      - name: install linux depends
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xorg-dev libxkbcommon-dev
+
+      # set up python (because its required for qt installer)
+      - name: set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # install qt
+      - name: install qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.8.3'
+          host: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
+          target: ${{ matrix.qt-platform }}
+          arch: ${{ matrix.os == 'windows-latest' && 'win64_msvc2019_64' || '' }}
+          cached: false
+
+      # configure cmake
+      - name: configure cmake
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      # build binary
+      - name: build binary
+        run: |
+          cmake --build build --config Release
+
+      # platform specific stuff
+      - name: package windows binary
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd build/Release
+          windeployqt --qmldir ../../ fraktalized.exe
+          powershell Compress-Archive -Path * -DestinationPath ../../fraktalized-windows-${{ github.ref_name }}.zip
+
+      - name: package maos app
+        if: matrix.os == 'macos-latest'
+        run: |
+          macdeployqt build/fraktalized.app -qmldir=. -dmg
+          mv build/fraktalized.dmg fraktalized-mac-${{ github.ref_name }}.dmg
+
+      - name: package linux binary
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd build
+          tar -czf ../fraktalized-linux-${{ github.ref_name }}.tar.gz fraktalized
+
+      # upload finished binaries
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: |
+            fraktalized-windows-${{ github.ref_name }}.zip
+            fraktalized-mac-${{ github.ref_name }}.dmg
+            fraktalized-linux-${{ github.ref_name }}.tar.gz
+          if-no-files-found: ignore
