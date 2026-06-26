@@ -13,15 +13,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-lastest
+          - os: ubuntu-latest
             qt-platform: desktop
             artifact-name: fraktalized-linux
+            qt-arch: ''
           - os: windows-latest
             qt-platform: desktop
             artifact-name: fraktalized-windows
+            qt-arch: win64_msvc2022_64
           - os: macos-latest
             qt-platform: desktop
             artifact-name: fraktalized-mac
+            qt-arch: ''
 
     steps:
       - name: checkout code
@@ -36,7 +39,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xorg-dev libxkbcommon-dev
 
-      # set up python (because its required for qt installer)
+      # set up python
       - name: set up python
         uses: actions/setup-python@v5
         with:
@@ -49,8 +52,7 @@ jobs:
           version: '6.8.3'
           host: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
           target: ${{ matrix.qt-platform }}
-          arch: ${{ matrix.os == 'windows-latest' && 'win64_msvc2019_64' || '' }}
-          cached: false
+          arch: ${{ matrix.qt-arch }}
 
       # configure cmake
       - name: configure cmake
@@ -86,7 +88,7 @@ jobs:
       - name: upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact-name }}
+          name: ${{ matrix.artifact-name }}-${{ github.ref_name }}
           path: |
             fraktalized-windows-${{ github.ref_name }}.zip
             fraktalized-mac-${{ github.ref_name }}.dmg
