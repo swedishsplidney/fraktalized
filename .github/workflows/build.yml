@@ -62,7 +62,7 @@ jobs:
           host: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
           target: ${{ matrix.qt-platform }}
           arch: ${{ matrix.qt-arch }}
-          extra: '--mirror https://mirrors.kernel.org/qtproject'
+          mirror: 'https://mirrors.kernel.org/qtproject'
 
       # missing agl framework fix
       - name: mock missing macos components
@@ -120,7 +120,7 @@ jobs:
           path: ${{ matrix.file-name }}
           if-no-files-found: ignore
 
-      # push to release
+      # each runner
       - name: upload binaries to github release
         uses: softprops/action-gh-release@v2
         with:
