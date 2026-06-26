@@ -39,6 +39,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xorg-dev libxkbcommon-dev
 
+      # force latest cmake to satisfy your CMakeLists.txt version check
+      - name: setup latest cmake
+        uses: lukka/get-cmake@latest
+
       # set up python
       - name: set up python
         uses: actions/setup-python@v5
@@ -72,23 +76,34 @@ jobs:
           windeployqt --qmldir ../../ fraktalized.exe
           powershell Compress-Archive -Path * -DestinationPath ../../fraktalized-windows-${{ github.ref_name }}.zip
 
-      - name: package maos app
+      - name: package macos app
         if: matrix.os == 'macos-latest'
         run: |
-          macdeployqt build/fraktalized.app -qmldir=. -dmg
-          mv build/fraktalized.dmg fraktalized-mac-${{ github.ref_name }}.dmg
+          export PATH="$QT_ROOT_DIR/bin:$PATH"
+          
+          APP_PATH=$(find build -name "fraktalized.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find fraktalized.app bundle anywhere in build directory."
+            exit 1
+          fi
+          
+          macdeployqt "$APP_PATH" -qmldir=. -dmg
+          
+          DMG_PATH=$(find build -name "*.dmg" | head -n 1)
+          mv "$DMG_PATH" fraktalized-mac-${{ github.ref_name }}.dmg
 
       - name: package linux binary
         if: matrix.os == 'ubuntu-latest'
         run: |
           cd build
-          tar -czf ../fraktalized-linux-${{ github.ref_name }}.tar.gz fraktalized
+          LINUX_BIN=$(find . -maxdepth 2 -name "fraktalized" -type f -executable | head -n 1)
+          tar -czf ../fraktalized-linux-${{ github.ref_name }}.tar.gz "$LINUX_BIN"
 
       # upload finished binaries
       - name: upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact-name }}-${{ github.ref_name }}
+          name: ${{ matrix.artifact-name }}
           path: |
             fraktalized-windows-${{ github.ref_name }}.zip
             fraktalized-mac-${{ github.ref_name }}.dmg
