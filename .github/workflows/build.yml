@@ -105,7 +105,7 @@ jobs:
           LINUX_BIN=$(find . -maxdepth 2 -name "fraktalized" -type f -executable | head -n 1)
           tar -czf ../fraktalized-linux-${{ github.ref_name }}.tar.gz "$LINUX_BIN"
 
-      # upload finished binaries
+      # upload finished binaries to workflow run storage
       - name: upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -115,3 +115,15 @@ jobs:
             fraktalized-mac-${{ github.ref_name }}.dmg
             fraktalized-linux-${{ github.ref_name }}.tar.gz
           if-no-files-found: ignore
+
+      # push assets to release page
+      - name: upload binaries to github release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            fraktalized-windows-${{ github.ref_name }}.zip
+            fraktalized-mac-${{ github.ref_name }}.dmg
+            fraktalized-linux-${{ github.ref_name }}.tar.gz
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
