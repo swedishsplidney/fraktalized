@@ -58,14 +58,10 @@ jobs:
           target: ${{ matrix.qt-platform }}
           arch: ${{ matrix.qt-arch }}
 
-      # configure cmake (forces macOS to output a .app bundle)
+      # configure cmake
+        type: run
       - name: configure cmake
-        run: |
-          if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_MACOSX_BUNDLE=ON
-          else
-            cmake -B build -DCMAKE_BUILD_TYPE=Release
-          fi
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'macos-latest' && '-DCMAKE_MACOSX_BUNDLE=ON' || '' }}
 
       # build binary
       - name: build binary
