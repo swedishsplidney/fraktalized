@@ -86,6 +86,7 @@ jobs:
         run: |
           cd build/Release
           windeployqt --qmldir ../../ fraktalized.exe
+          cp -r ../../qml ./ 2>/dev/null || true
           powershell Compress-Archive -Path * -DestinationPath ../../fraktalized-windows-${{ github.ref_name }}.zip
 
       - name: package macos app
@@ -94,22 +95,25 @@ jobs:
           APP_PATH=$(find build -name "fraktalized.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "Error: Could not find fraktalized.app bundle anywhere in build directory."
-            echo "Contents of build directory for debugging:"
-            ls -R build
             exit 1
           fi
           
-          macdeployqt "$APP_PATH" -qmldir=. -dmg
+          mkdir -p "$APP_PATH/Contents/Resources/qml"
+          cp -r qml/* "$APP_PATH/Contents/Resources/qml/" 2>/dev/null || true
           
+          macdeployqt "$APP_PATH" -qmldir=. -dmg
           DMG_PATH=$(find build -name "*.dmg" | head -n 1)
           mv "$DMG_PATH" fraktalized-mac-${{ github.ref_name }}.dmg
 
       - name: package linux binary
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cd build
-          LINUX_BIN=$(find . -maxdepth 2 -name "fraktalized" -type f -executable | head -n 1)
-          tar -czf ../fraktalized-linux-${{ github.ref_name }}.tar.gz "$LINUX_BIN"
+          mkdir -p dist
+          LINUX_BIN=$(find build -maxdepth 2 -name "fraktalized" -type f -executable | head -n 1)
+          cp "$LINUX_BIN" dist/
+          cp -r qml dist/
+          
+          tar -czf fraktalized-linux-${{ github.ref_name }}.tar.gz -C dist .
 
       # upload finished binaries to workflow run storage
       - name: upload artifacts
