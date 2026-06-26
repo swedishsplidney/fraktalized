@@ -59,7 +59,6 @@ jobs:
           arch: ${{ matrix.qt-arch }}
 
       # configure cmake
-        type: run
       - name: configure cmake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'macos-latest' && '-DCMAKE_MACOSX_BUNDLE=ON' || '' }}
 
