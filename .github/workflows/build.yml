@@ -58,9 +58,16 @@ jobs:
           target: ${{ matrix.qt-platform }}
           arch: ${{ matrix.qt-arch }}
 
+      # missing agl framework fix
+      - name: mock missing macos components
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p build/Frameworks/AGL.framework
+          touch build/Frameworks/AGL.framework/AGL
+
       # configure cmake
       - name: configure cmake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'macos-latest' && '-DCMAKE_MACOSX_BUNDLE=ON' || '' }}
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'macos-latest' && '-DCMAKE_MACOSX_BUNDLE=ON -DCMAKE_EXE_LINKER_FLAGS="-F./build/Frameworks"' || '' }}
 
       # build binary
       - name: build binary
