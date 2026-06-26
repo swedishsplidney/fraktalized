@@ -62,7 +62,7 @@ jobs:
       - name: patch qt agl framework
         if: matrix.os == 'macos-latest'
         run: |
-          find "$QT_ROOT_DIR" -name "FindWrapOpenGL.cmake" -exec sed -i '' 's/-framework AGL//g' {} +
+          find /Users/runner/Qt -name "FindWrapOpenGL.cmake" -exec sed -i '' 's/-framework AGL//g' {} +
 
       # configure cmake
       - name: configure cmake
@@ -84,7 +84,7 @@ jobs:
       - name: package macos app
         if: matrix.os == 'macos-latest'
         run: |
-          export PATH="$QT_ROOT_DIR/bin:$PATH"
+          export PATH="/Users/runner/Qt/6.8.3/macos/bin:$PATH"
           
           APP_PATH=$(find build -name "fraktalized.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
