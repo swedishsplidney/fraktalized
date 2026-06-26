@@ -9,7 +9,6 @@ jobs:
   build:
     name: build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    # set perms
     permissions:
       contents: write
     strategy:
@@ -55,7 +54,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      # install qt
+      # install qt with official open-source mirror backup arguments
       - name: install qt
         uses: jurplel/install-qt-action@v3
         with:
@@ -63,6 +62,7 @@ jobs:
           host: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
           target: ${{ matrix.qt-platform }}
           arch: ${{ matrix.qt-arch }}
+          extra: '--mirror https://mirrors.kernel.org/qtproject'
 
       # missing agl framework fix
       - name: mock missing macos components
@@ -86,7 +86,6 @@ jobs:
         run: |
           cd build/Release
           windeployqt --qmldir ../../ fraktalized.exe
-          cp -r ../../qml ./ 2>/dev/null || true
           powershell Compress-Archive -Path * -DestinationPath ../../fraktalized-windows-${{ github.ref_name }}.zip
 
       - name: package macos app
@@ -95,13 +94,13 @@ jobs:
           APP_PATH=$(find build -name "fraktalized.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "Error: Could not find fraktalized.app bundle anywhere in build directory."
+            echo "Contents of build directory for debugging:"
+            ls -R build
             exit 1
           fi
           
-          mkdir -p "$APP_PATH/Contents/Resources/qml"
-          cp -r qml/* "$APP_PATH/Contents/Resources/qml/" 2>/dev/null || true
-          
           macdeployqt "$APP_PATH" -qmldir=. -dmg
+          
           DMG_PATH=$(find build -name "*.dmg" | head -n 1)
           mv "$DMG_PATH" fraktalized-mac-${{ github.ref_name }}.dmg
 
@@ -111,8 +110,6 @@ jobs:
           mkdir -p dist
           LINUX_BIN=$(find build -maxdepth 2 -name "fraktalized" -type f -executable | head -n 1)
           cp "$LINUX_BIN" dist/
-          cp -r qml dist/
-          
           tar -czf fraktalized-linux-${{ github.ref_name }}.tar.gz -C dist .
 
       # upload finished binaries to workflow run storage
@@ -123,7 +120,7 @@ jobs:
           path: ${{ matrix.file-name }}
           if-no-files-found: ignore
 
-      # push to release page
+      # push to release
       - name: upload binaries to github release
         uses: softprops/action-gh-release@v2
         with:
