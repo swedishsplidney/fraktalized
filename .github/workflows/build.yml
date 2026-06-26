@@ -62,7 +62,7 @@ jobs:
       - name: patch qt agl framework
         if: matrix.os == 'macos-latest'
         run: |
-          sed -i '' 's/-framework AGL//g' "$QT_ROOT_DIR/lib/cmake/Qt6/FindWrapOpenGL.cmake"
+          find "$QT_ROOT_DIR" -name "FindWrapOpenGL.cmake" -exec sed -i '' 's/-framework AGL//g' {} +
 
       # configure cmake
       - name: configure cmake
