@@ -39,7 +39,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xorg-dev libxkbcommon-dev
 
-      # force latest cmake to satisfy your CMakeLists.txt version check
+      # force latest cmake to satisfy cmake version check
       - name: setup latest cmake
         uses: lukka/get-cmake@latest
 
@@ -58,10 +58,14 @@ jobs:
           target: ${{ matrix.qt-platform }}
           arch: ${{ matrix.qt-arch }}
 
-      # configure cmake
+      # configure cmake (forces macOS to output a .app bundle)
       - name: configure cmake
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_MACOSX_BUNDLE=ON
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=Release
+          fi
 
       # build binary
       - name: build binary
@@ -84,6 +88,8 @@ jobs:
           APP_PATH=$(find build -name "fraktalized.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "Error: Could not find fraktalized.app bundle anywhere in build directory."
+            echo "Contents of build directory for debugging:"
+            ls -R build
             exit 1
           fi
           
