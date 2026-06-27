@@ -43,7 +43,7 @@ fragment `.frag`/`.vert`, and compute `.glsl` shader files.
 
 ## available fractals:
 
-fraktalized currently has 8 fractal sets:
+fraktalized currently has 10 fractal sets:
 
 * **mandelbrot set:** the classic fractal set
 * **julia set:** cool swirly stuff, complete with adjustable constant coords
@@ -53,6 +53,8 @@ fraktalized currently has 8 fractal sets:
 * **anti-buddhabrot:** reverse buddhabrot
 * **barnsley fern:** looks very naturey
 * **mandelbulb:** like the mandelbrot but 3d
+* **menger sponge:** cube, now with infinite* surface area
+* **icebox:** spiky box!
 
 ### current fractal types:
 
