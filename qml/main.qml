@@ -184,6 +184,7 @@ Window {
 
                     ComboBox {
                         id: typeSelector
+                        objectName: "selector"
                         model: mode3DToggle.checked ? ["mandelbulb", "menger sponge", "icebox"] : ["mandelbrot set", "julia set", "burning ship set", "newton set", "buddhabrot", "anti-buddhabrot", "barnsley fern"]
                         Layout.fillWidth: true
 
@@ -279,6 +280,7 @@ Window {
                         id: mode3DToggle
                         text: mode3DToggle.checked ? "3d" : "2d"
                         font.family: "Monospace"
+                        objectName: "toggle"
 
                         checked: engine.is3DMode
 
@@ -477,6 +479,7 @@ Window {
 
                         Slider {
                             id: maxIterationsSlider
+                            objectName: "iteration"
                             Layout.fillWidth: true
                             from: 10; to: 500; value: 100
                             onPressedChanged: if (pressed) forceActiveFocus()
@@ -549,6 +552,8 @@ Window {
                     id: gradientEditorContainer
                     spacing: 12
                     Layout.fillWidth: true
+
+                    objectName: "color"
 
                     signal liveUpdate()
 
@@ -846,6 +851,7 @@ Window {
 
                         Switch {
                             id: freeFlyToggle
+                            objectName: "freeflytoggle"
                             text: freeFlyToggle.checked ? "wasd" : "classic"
                             font.family: "Monospace"
 
@@ -1049,6 +1055,7 @@ Window {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
+                        objectName: "save"
 
                         TextField {
                             id: presetNameInput
@@ -1494,6 +1501,140 @@ Window {
                     Layout.fillWidth: true
                 }
             }
+        }
+    }
+
+    // tutorial box setup
+    Rectangle {
+        id: tutorialOverlay
+        width: 320
+        height: 160
+        color: "#d00d0e15"
+        border.color: "#35ffffff"
+        border.width: 1
+        radius: 8
+
+        z: 999
+
+        visible: tutorialManager ? (tutorialManager.location !== "hidden") : false
+
+        // positioning
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: tutorialManager ? (tutorialManager.location === "bottom" ? 30 : -200) : -200
+
+        // transition
+        Behavior on anchors.bottomMargin {
+            NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 12
+
+            Text {
+                Layout.fillWidth: true
+                text: tutorialManager ? tutorialManager.text : ""
+                color: "#8a90a6"
+                font.pixelSize: 14
+                wrapMode: Text.WordWrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                ProgressBar {
+                    Layout.fillWidth: true
+                    from: 0.0
+                    to: 1.0
+                    value: tutorialManager ? tutorialManager.completion : 0.0
+                }
+
+                Button {
+                    text: tutorialManager ? (tutorialManager.completion >= 1.0 ? "Finish" : "Next") : "Next"
+
+                    onClicked: {
+                        if (tutorialManager) {
+                            tutorialManager.nextStep()
+                        }
+                        engine.forceActiveFocus()
+                    }
+                }
+            }
+        }
+    }
+
+    // spotlight
+    Item {
+        id: spotlightMask
+        anchors.fill: parent
+        z: 998
+        visible: tutorialManager && tutorialManager.location !== "hidden" && tutorialManager.targetElement !== ""
+
+        property Item targetItem: {
+            if (!tutorialManager || tutorialManager.targetElement === "" || !sidebar) return null;
+            function findChildByName(parentItem, name) {
+                if (!parentItem || !parentItem.children) return null;
+                for (var i = 0; i < parentItem.children.length; i++) {
+                    var child = parentItem.children[i];
+                    if (child.objectName === name) return child;
+                    var found = findChildByName(child, name);
+                    if (found) return found;
+                }
+                return null;
+            }
+            return findChildByName(sidebar, tutorialManager.targetElement);
+        }
+
+        property rect targetRect: targetItem ? targetItem.mapToItem(spotlightMask, 0, 0, targetItem.width, targetItem.height) : Qt.rect(0,0,0,0)
+        property rect tutorialRect: tutorialOverlay ? tutorialOverlay.mapToItem(spotlightMask, 0, 0, tutorialOverlay.width, tutorialOverlay.height) : Qt.rect(0,0,0,0)
+
+        property bool isComboBox: tutorialManager ? (tutorialManager.targetElement.toLowerCase().indexOf("selector") !== -1 ||
+            tutorialManager.targetElement.toLowerCase().indexOf("combo") !== -1) : false
+
+        property double itemX: targetRect.x - 4
+        property double itemY: isComboBox ? (targetRect.y + (targetRect.height / 2) - 17 - 4) : (targetRect.y - 4)
+        property double itemW: targetRect.width + 8
+        property double itemH: isComboBox ? 42 : (targetRect.height + 8)
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            onPressed: (mouse) => { mouse.accepted = false; }
+            onReleased: (mouse) => { mouse.accepted = false; }
+            onClicked: (mouse) => { mouse.accepted = false; }
+        }
+
+        Rectangle {
+            color: "#a6000000"
+            x: 0; y: 0
+            width: parent.width
+            height: spotlightMask.targetItem ? spotlightMask.itemY : parent.height
+        }
+
+        Rectangle {
+            color: "#a6000000"
+            x: 0
+            y: spotlightMask.targetItem ? (spotlightMask.itemY + spotlightMask.itemH) : parent.height
+            width: parent.width
+            height: parent.height - y
+        }
+
+        Rectangle {
+            color: "#a6000000"
+            x: 0
+            y: spotlightMask.targetItem ? spotlightMask.itemY : 0
+            width: spotlightMask.targetItem ? spotlightMask.itemX : 0
+            height: spotlightMask.targetItem ? spotlightMask.itemH : 0
+        }
+
+        Rectangle {
+            color: "#a6000000"
+            x: spotlightMask.targetItem ? (spotlightMask.itemX + spotlightMask.itemW) : parent.width
+            y: spotlightMask.targetItem ? spotlightMask.itemY : 0
+            width: parent.width - x
+            height: spotlightMask.targetItem ? spotlightMask.itemH : 0
         }
     }
 }

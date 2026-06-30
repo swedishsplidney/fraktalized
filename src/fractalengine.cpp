@@ -993,6 +993,9 @@ QStringList FractalEngine::loadPresetNames() {
         QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
         if (doc.isObject()) {
             names = doc.object().keys();
+
+            // dont read the tutorial savestate as a preset
+            names.removeAll("tutorial_completed");
         }
         file.close();
     }
@@ -1007,6 +1010,11 @@ QStringList FractalEngine::loadPresetNames() {
 // load preset data
 QVariantMap FractalEngine::loadPresetData(const QString &name) {
     QVariantMap result;
+
+    if (name == "tutorial_completed" || name == "no presets saved!") {
+        return result;
+    }
+
     QFile file(getPresetsFilePath());
 
     if (!file.open(QIODevice::ReadOnly)) {

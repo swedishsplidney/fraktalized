@@ -3,6 +3,8 @@
 #include <QQuickWindow>
 #include <QDirIterator>
 #include <QDebug>
+#include <QQmlContext>
+#include "tutorialmanager.h"
 
 int main(int argc, char *argv[]) {
     // force native opengl
@@ -12,17 +14,20 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
 
     // debug stuff
-    qDebug() << "--- Embedded Virtual Resource Map ---";
+    qDebug() << "--- virtual resource map ---";
     QDirIterator it(":", QDirIterator::Subdirectories);
     while (it.hasNext()) {
         qDebug() << it.next();
     }
-    qDebug() << "-------------------------------------";
+    qDebug() << "----------------------------";
 
     QQmlApplicationEngine engine;
 
-    // fallback load target
-    engine.load(QUrl(QStringLiteral("qrc:/qt/qml/fraktalized/qml/main.qml")));
+    TutorialManager tutorialManager;
+
+    engine.rootContext()->setContextProperty("tutorialManager", &tutorialManager);
+
+    engine.load(QUrl(QStringLiteral("qml/main.qml")));
 
     if (engine.rootObjects().isEmpty())
         return -1;
