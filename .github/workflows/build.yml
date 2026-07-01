@@ -126,7 +126,7 @@ jobs:
           [Desktop Entry]
           Type=Application
           Name=Fraktalized
-          Exec=fraktalized
+          Exec=env QT_QPA_PLATFORMTHEME=gtk3 fraktalized
           Icon=fraktalized
           Categories=Utility;
           EOF
@@ -136,6 +136,8 @@ jobs:
           export QML_SOURCES_PATHS="qml"
           export FORCE_KEYFOOTPRINT=1
           export APPIMAGE_EXTRACT_AND_RUN=1
+          
+          export EXTRA_QT_PLUGINS="platformthemes,styles"
           
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
