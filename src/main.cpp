@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
     engine.rootContext()->setContextProperty("tutorialManager", &tutorialManager);
 
-    engine.load(QUrl(QStringLiteral("qml/main.qml")));
+    engine.load(QUrl(QStringLiteral("qrc:/fraktalizedModule/qml/main.qml")));
 
     if (engine.rootObjects().isEmpty())
         return -1;
