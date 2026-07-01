@@ -10,10 +10,13 @@ set(CMAKE_AUTOUIC ON)
 
 if(APPLE)
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/mock_frameworks")
-    file(WRITE "${CMAKE_BINARY_DIR}/mock_frameworks/AGL" "")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/mock_frameworks/AGL.framework")
+    file(WRITE "${CMAKE_BINARY_DIR}/mock_frameworks/AGL.framework/AGL" "")
 
-    set(OPENGL_agl_LIBRARY "${CMAKE_BINARY_DIR}/mock_frameworks/AGL" CACHE FILEPATH "" FORCE)
+    set(OPENGL_agl_LIBRARY "${CMAKE_BINARY_DIR}/mock_frameworks/AGL.framework/AGL" CACHE FILEPATH "" FORCE)
     set(WrapOpenGL_FOUND TRUE CACHE BOOL "" FORCE)
+
+    target_link_options(${PROJECT_NAME} PRIVATE "-F${CMAKE_BINARY_DIR}/mock_frameworks")
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Widgets OpenGL)
