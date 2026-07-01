@@ -107,26 +107,21 @@ jobs:
       - name: package linux binary
         if: matrix.os == 'ubuntu-latest'
         run: |
-          # 1. Install AppImage system tool dependencies
           sudo apt-get update
           sudo apt-get install -y libfuse2 file
           
-          # 2. Download stable release binaries directly using continuous release links
           wget -q -O linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
           wget -q -O linuxdeploy-plugin-qt-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
           chmod +x linuxdeploy-x86_64.AppImage
           chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
           
-          # 3. Set up AppDir structure
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/share/applications
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
           
-          # 4. Copy built binary
           LINUX_BIN=$(find build -maxdepth 2 -name "fraktalized" -type f -executable | head -n 1)
           cp "$LINUX_BIN" AppDir/usr/bin/
           
-          # 5. Generate desktop entry
           cat <<EOF > AppDir/usr/share/applications/fraktalized.desktop
           [Desktop Entry]
           Type=Application
@@ -136,23 +131,17 @@ jobs:
           Categories=Utility;
           EOF
           
-          # 6. Create dummy icon
           python3 -c "import struct; open('AppDir/usr/share/icons/hicolor/256x256/apps/fraktalized.png', 'wb').write(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\rIDATx\x9cc` \x05\x00\x00\x0e\x00\x01\xa8\x91\xa1\xc1\x00\x00\x00\x00IEND\xaeB`\x82')"
           
-          # 7. Export setup environments
           export QML_SOURCES_PATHS="qml"
           export FORCE_KEYFOOTPRINT=1
           export APPIMAGE_EXTRACT_AND_RUN=1
           
-          # 8. Run package compiler loop
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --plugin qt \
             --output appimage
           
-          # 9. IMPORTANT: Match your matrix filename specification!
-          # Your matrix says: file-name: fraktalized-linux-${{ github.ref_name }}.tar.gz
-          # So we pack the generated .AppImage into that expected archive target.
           GENERATED_APPIMAGE=$(find . -maxdepth 1 -name "*.AppImage" | head -n 1)
           tar -czf fraktalized-linux-${{ github.ref_name }}.tar.gz "$GENERATED_APPIMAGE"
 
