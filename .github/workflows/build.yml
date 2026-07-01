@@ -18,7 +18,7 @@ jobs:
           - os: ubuntu-latest
             qt-platform: desktop
             artifact-name: fraktalized-linux
-            file-name: fraktalized-linux-${{ github.ref_name }}.tar.gz
+            file-name: fraktalized-linux-${{ github.ref_name }}.AppImage
             qt-arch: ''
           - os: windows-latest
             qt-platform: desktop
@@ -142,8 +142,11 @@ jobs:
             --plugin qt \
             --output appimage
           
-          GENERATED_APPIMAGE=$(find . -maxdepth 1 -name "*.AppImage" | head -n 1)
-          tar -czf fraktalized-linux-${{ github.ref_name }}.tar.gz "$GENERATED_APPIMAGE"
+          rm linuxdeploy-x86_64.AppImage
+          
+          REAL_APPIMAGE=$(find . -maxdepth 1 -name "*.AppImage" | head -n 1)
+          
+          mv "$REAL_APPIMAGE" "fraktalized-linux-${{ github.ref_name }}.AppImage"
 
       # upload finished binaries to workflow run storage
       - name: upload artifacts
