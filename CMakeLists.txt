@@ -40,6 +40,12 @@ qt_add_qml_module(${PROJECT_NAME}
     RESOURCES
         shaders/fractal.vert
         shaders/fractal.frag
+        shaders/trajectory.glsl
+        shaders/ifs.glsl
+        shaders/3d.vert
+        shaders/3d.frag
+        shaders/menger.frag
+        shaders/icebox.frag
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

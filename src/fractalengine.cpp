@@ -26,8 +26,8 @@ void FractalFBORenderer::init() {
     initializeOpenGLFunctions();
     m_program = new QOpenGLShaderProgram();
 
-    bool vLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/fractal.vert");
-    bool fLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/fractal.frag");
+    bool vLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/fraktalizedModule/shaders/fractal.vert");
+    bool fLoaded = m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/fraktalizedModule/shaders/fractal.frag");
 
     std::cout << "shaders -> vertex: " << (vLoaded ? "ok" : "fail")
               << " | fragment: " << (fLoaded ? "ok" : "fail") << std::endl;
@@ -37,7 +37,7 @@ void FractalFBORenderer::init() {
 
     // trajectory engine
     QOpenGLShader *compShader = new QOpenGLShader(QOpenGLShader::Compute);
-    if (compShader->compileSourceFile("shaders/trajectory.glsl")) {
+    if (compShader->compileSourceFile(":/fraktalizedModule/shaders/trajectory.glsl")) {
         m_compute_program = glCreateProgram();
         glAttachShader(m_compute_program, compShader->shaderId());
         glLinkProgram(m_compute_program);
@@ -59,7 +59,7 @@ void FractalFBORenderer::init() {
 
     // ifs engine
     QOpenGLShader *ifsShader = new QOpenGLShader(QOpenGLShader::Compute);
-    if (ifsShader->compileSourceFile("shaders/ifs.glsl")) {
+    if (ifsShader->compileSourceFile(":/fraktalizedModule/shaders/ifs.glsl")) {
         m_ifs_program = glCreateProgram();
         glAttachShader(m_ifs_program, ifsShader->shaderId());
         glLinkProgram(m_ifs_program);
@@ -80,22 +80,22 @@ void FractalFBORenderer::init() {
 
     // 3d initializer
     m_3dProgram = new QOpenGLShaderProgram();
-    m_3dProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/3d.vert");
-    m_3dProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/3d.frag");
+    m_3dProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/fraktalizedModule/shaders/3d.vert");
+    m_3dProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/fraktalizedModule/shaders/3d.frag");
     m_3dProgram->bindAttributeLocation("aPos", 0);
     m_3dProgram->bindAttributeLocation("aColor", 1);
     m_3dProgram->link();
 
     m_mengerProgram = new QOpenGLShaderProgram();
-    m_mengerProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/3d.vert");
-    m_mengerProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/menger.frag");
+    m_mengerProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/fraktalizedModule/shaders/3d.vert");
+    m_mengerProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/fraktalizedModule/shaders/menger.frag");
     m_mengerProgram->bindAttributeLocation("aPos", 0);
     m_mengerProgram->bindAttributeLocation("aColor", 1);
     m_mengerProgram->link();
 
     m_iceboxProgram = new QOpenGLShaderProgram();
-    m_iceboxProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, "shaders/3d.vert");
-    m_iceboxProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, "shaders/icebox.frag");
+    m_iceboxProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/fraktalizedModule/shaders/3d.vert");
+    m_iceboxProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/fraktalizedModule/shaders/icebox.frag");
     m_iceboxProgram->bindAttributeLocation("aPos", 0);
     m_iceboxProgram->bindAttributeLocation("aColor", 1);
     m_iceboxProgram->link();
