@@ -15,7 +15,7 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Widgets OpenGL)
 
-add_executable(${PROJECT_NAME}
+add_executable(${PROJECT_NAME} MACOSX_BUNDLE
     src/main.cpp
     src/fractalengine.h
     src/fractalengine.cpp

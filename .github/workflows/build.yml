@@ -124,19 +124,21 @@ jobs:
           Categories=Utility;
           EOF
           
-          convert -size 256x256 xc:purple AppDir/usr/share/icons/hicolor/256x256/apps/fraktalized.png || touch AppDir/usr/share/icons/hicolor/256x256/apps/fraktalized.png
+          python3 -c "import struct; open('AppDir/usr/share/icons/hicolor/256x256/apps/fraktalized.png', 'wb').write(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\rIDATx\x9cc` \x05\x00\x00\x0e\x00\x01\xa8\x91\xa1\xc1\x00\x00\x00\x00IEND\xaeB`\x82')"
           
           export QML_SOURCES_PATHS="qml"
 
-          export Qt6_DIR="${{ env.Qt6_DIR }}"
+          export FORCE_KEYFOOTPRINT=1
+          export APPIMAGE_EXTRACT_AND_RUN=1
           
+          chmod +x linuxdeploy-x86_64.AppImage
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --plugin qt \
             --output appimage
-          
+
           GENERATED_APPIMAGE=$(find . -maxdepth 1 -name "*.AppImage" | head -n 1)
-          mv "$GENERATED_APPIMAGE" fraktalized-linux-${{ github.ref_name }}.tar.gz
+          mv "$GENERATED_APPIMAGE" fraktalized-linux-${{ github.ref_name }}.AppImage
 
       # upload finished binaries to workflow run storage
       - name: upload artifacts
