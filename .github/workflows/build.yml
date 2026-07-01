@@ -54,7 +54,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      # install qt with official open-source mirror backup arguments
+      # install qt
       - name: install qt
         uses: jurplel/install-qt-action@v3
         with:
@@ -62,7 +62,6 @@ jobs:
           host: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'windows-latest' && 'windows' || 'mac' }}
           target: ${{ matrix.qt-platform }}
           arch: ${{ matrix.qt-arch }}
-          mirror: 'https://mirrors.kernel.org/qtproject'
 
       # mock missing legacy agl framework
       - name: create local agl framework mock
@@ -88,6 +87,7 @@ jobs:
           windeployqt --qmldir ../../ fraktalized.exe
           powershell Compress-Archive -Path * -DestinationPath ../../fraktalized-windows-${{ github.ref_name }}.zip
 
+      # package macos app
       - name: package macos app
         if: matrix.os == 'macos-latest'
         run: |
@@ -104,6 +104,7 @@ jobs:
           DMG_PATH=$(find build -name "*.dmg" | head -n 1)
           mv "$DMG_PATH" fraktalized-mac-${{ github.ref_name }}.dmg
 
+      # package linux binary
       - name: package linux binary
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -122,11 +123,12 @@ jobs:
           LINUX_BIN=$(find build -maxdepth 2 -name "fraktalized" -type f -executable | head -n 1)
           cp "$LINUX_BIN" AppDir/usr/bin/
           
+          # --- FIXED: Pure executable target names keep linuxdeploy happy ---
           cat <<EOF > AppDir/usr/share/applications/fraktalized.desktop
           [Desktop Entry]
           Type=Application
           Name=Fraktalized
-          Exec=env QT_QPA_PLATFORMTHEME=gtk3 fraktalized
+          Exec=fraktalized
           Icon=fraktalized
           Categories=Utility;
           EOF
@@ -137,12 +139,21 @@ jobs:
           export FORCE_KEYFOOTPRINT=1
           export APPIMAGE_EXTRACT_AND_RUN=1
           
+          # Force deployment plugin to pack the necessary style engines
           export EXTRA_QT_PLUGINS="platformthemes,styles"
           
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --plugin qt \
             --output appimage
+          
+          # --- STYLING FIX: Override the internal AppRun file inside the AppDir container after deployment to inject system themes ---
+          if [ -f "AppDir/AppRun" ]; then
+            sed -i 's|#!/bin/bash|#!/bin/bash\nexport QT_QPA_PLATFORMTHEME=gtk3|' AppDir/AppRun
+          fi
+          
+          # Regenerate cleanly with the layout modification saved
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
           
           rm linuxdeploy-x86_64.AppImage
           
