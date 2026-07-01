@@ -42,7 +42,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xorg-dev libxkbcommon-dev
+          ssudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xorg-dev libxkbcommon-dev libxcb-cursor0
 
       # force latest cmake to satisfy cmake version check
       - name: setup latest cmake
@@ -73,7 +73,7 @@ jobs:
 
       # configure cmake
       - name: configure cmake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'macos-latest' && '-DCMAKE_EXE_LINKER_FLAGS="-F../Frameworks"' || '' }}
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       # build binary
       - name: build binary

@@ -9,8 +9,9 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 if(APPLE)
+    set(WrapOpenGL_FOUND TRUE CACHE BOOL "" FORCE)
+    set(WrapOpenGL::AGL "" CACHE STRING "" FORCE)
     add_library(WrapOpenGL::AGL INTERFACE IMPORTED GLOBAL)
-    add_library(OpenGL::GL INTERFACE IMPORTED GLOBAL)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Widgets OpenGL)
