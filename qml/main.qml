@@ -1055,7 +1055,6 @@ Window {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
-                        objectName: "save"
 
                         TextField {
                             id: presetNameInput
@@ -1268,6 +1267,7 @@ Window {
                 ColumnLayout {
                     spacing: 8
                     Layout.fillWidth: true
+                    objectName: "save"
 
                     Text { text: "export high-res png:"; color: "#8a90a6"; font.pixelSize: 12; font.family: "Monospace" }
 
