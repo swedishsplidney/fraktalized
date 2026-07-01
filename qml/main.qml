@@ -204,6 +204,7 @@ Window {
                                         maxIterationsSlider.to = 30;
                                         maxLimitInput.text = "30";
                                         maxIterationsSlider.value = 15;
+                                        engine.freeFlyMode = false;
                                         break;
                                     case 1: // menger sponge
                                         engine.pan3D = Qt.vector3d(0, 0, 0);
@@ -218,6 +219,7 @@ Window {
                                         maxIterationsSlider.to = 12;
                                         maxLimitInput.text = "12";
                                         maxIterationsSlider.value = 8;
+                                        engine.freeFlyMode = false;
                                         break;
                                     case 2: // icebox
                                         engine.pan3D = Qt.vector3d(0, 0, 0);
@@ -232,6 +234,7 @@ Window {
                                         maxIterationsSlider.to = 64;
                                         maxLimitInput.text = "64";
                                         maxIterationsSlider.value = 16;
+                                        engine.freeFlyMode = false;
                                         break;
                                 }
                             } else {
@@ -852,6 +855,9 @@ Window {
                         Switch {
                             id: freeFlyToggle
                             objectName: "freeflytoggle"
+
+                            checked: engine.freeFlyMode
+
                             text: freeFlyToggle.checked ? "wasd" : "classic"
                             font.family: "Monospace"
 
@@ -864,6 +870,7 @@ Window {
                             }
 
                             onToggled: {
+                                engine.freeFlyMode = checked
                                 if (!checked) {
                                     typeSelector.applyDefaultView();
                                 }
@@ -1173,7 +1180,21 @@ Window {
                                 let presetState = engine.loadPresetData(presetSelector.currentText);
                                 if (!presetState) return;
 
-                                // set color stops
+                                // set engine dimensions
+                                if (presetState.is3DMode !== undefined) {
+                                    engine.is3DMode = presetState.is3DMode;
+
+                                    if (typeof mode3DToggle !== "undefined" && mode3DToggle !== null) {
+                                        mode3DToggle.checked = presetState.is3DMode;
+                                    }
+                                }
+
+                                // set fractal selector
+                                if (presetState.set !== undefined) {
+                                    typeSelector.currentIndex = presetState.set;
+                                }
+
+                                // apply gradients
                                 let retrievedStops = presetState.stops;
                                 if (retrievedStops && retrievedStops.length > 0) {
                                     let pureJsStops = [];
@@ -1183,17 +1204,10 @@ Window {
                                             color: String(retrievedStops[i].color)
                                         });
                                     }
-
                                     gradientEditorContainer.stops = pureJsStops;
                                     gradientEditorContainer.stopsChanged();
                                 }
 
-                                // set fractal type
-                                if (presetState.set !== undefined) {
-                                    typeSelector.currentIndex = presetState.set;
-                                }
-
-                                // set coords and zoom
                                 if (presetState.zoom !== undefined) {
                                     engine.zoomLevel = presetState.zoom;
                                 }
@@ -1201,26 +1215,24 @@ Window {
                                     engine.zoomCenter = presetState.center;
                                 }
 
-                                // 3d stuff
-                                if (presetState.is3DMode !== undefined) {
-                                    engine.is3DMode = presetState.is3DMode;
-
-                                    if (typeof mode3DToggle !== "undefined" && mode3DToggle !== null) {
-                                        mode3DToggle.checked = presetState.is3DMode;
+                                // apply viewport transforms
+                                if (presetState.is3DMode) {
+                                    if (presetState.isFreeFlyMode !== undefined) {
+                                        freeFlyToggle.checked = presetState.isFreeFlyMode;
+                                        engine.freeFlyMode = presetState.isFreeFlyMode;
                                     }
 
-                                    if (presetState.is3DMode) {
-                                        if (presetState.pan3D !== undefined) engine.pan3D = presetState.pan3D;
-
-                                        if (presetState.rotation3D !== undefined) engine.rotation3D = presetState.rotation3D;
-
-                                        if (presetState.zoom3D !== undefined) engine.zoom3D = presetState.zoom3D;
-                                    } else {
-                                        // clean up old 3d state stuff
-                                        engine.pan3D = Qt.vector3d(0, 0, 0);
-                                        engine.rotation3D = Qt.quaternion(1, 0, 0, 0);
-                                        engine.zoom3D = 3.0;
+                                    if (presetState.pan3D !== undefined) engine.pan3D = presetState.pan3D;
+                                    if (presetState.rotation3D !== undefined) engine.rotation3D = presetState.rotation3D;
+                                    if (presetState.zoom3D !== undefined) engine.zoom3D = presetState.zoom3D;
+                                } else {
+                                    engine.pan3D = Qt.vector3d(0, 0, 0);
+                                    engine.rotation3D = Qt.quaternion(1, 0, 0, 0);
+                                    engine.zoom3D = 3.0;
+                                    if (typeof freeFlyToggle !== "undefined" && freeFlyToggle !== null) {
+                                        freeFlyToggle.checked = false;
                                     }
+                                    engine.freeFlyMode = false;
                                 }
 
                                 gradientEditorContainer.updateEngineGradient();

@@ -954,6 +954,8 @@ void FractalEngine::savePreset(const QString & name, const QVariantList &positio
     // 3d stuff
     presetObj["is3D"] = m_is3DMode;
     if (m_is3DMode) {
+        presetObj["isFreeFlyMode"] = m_isFreeFlyMode;
+
         // serialize pan vector
         QJsonObject panObj;
         panObj["x"] = m_targetPan3D.x();
@@ -1016,7 +1018,6 @@ QVariantMap FractalEngine::loadPresetData(const QString &name) {
     }
 
     QFile file(getPresetsFilePath());
-
     if (!file.open(QIODevice::ReadOnly)) {
         return result;
     }
@@ -1031,7 +1032,6 @@ QVariantMap FractalEngine::loadPresetData(const QString &name) {
 
     QJsonObject presetObj = masterRoot[name].toObject();
 
-    // convert into raw QVariant structures
     QVariantList retrievedStops;
     QJsonArray stopsArr = presetObj["stops"].toArray();
     for (const auto &stopVal : stopsArr) {
@@ -1042,38 +1042,60 @@ QVariantMap FractalEngine::loadPresetData(const QString &name) {
         retrievedStops.append(stopMap);
     }
 
-    result["stops"] = retrievedStops;
-    result["set"] = presetObj["set"].toInt();
-    result["zoom"] = presetObj["zoom"].toDouble();
-
-    // convert center to qvector2d
-    QJsonObject centerObj = presetObj["center"].toObject();
-    QVector2D centerVec(centerObj["x"].toDouble(), centerObj["y"].toDouble());
-    result["center"] = centerVec;
-
-    // load 3d state
     bool is3D = presetObj.value("is3D").toBool(false);
-    result["is3DMode"] = is3D;
+    int targetSet = presetObj["set"].toInt();
+
+    this->setIs3DMode(is3D);
+
+    this->setFractalType(targetSet);
 
     if (is3D) {
-        // reconstruct pan
+        bool freeFly = presetObj.value("isFreeFlyMode").toBool(false);
+
+        this->setFreeFlyMode(freeFly);
+
         QJsonObject panObj = presetObj["pan3D"].toObject();
         QVector3D panVec(panObj["x"].toDouble(), panObj["y"].toDouble(), panObj["z"].toDouble());
-        result["pan3D"] = panVec;
+        this->setPan3D(panVec);
 
-        // reconstruct rotation
         QJsonObject rotObj = presetObj["rotation3D"].toObject();
         QQuaternion rotQuat(rotObj["scalar"].toDouble(), rotObj["x"].toDouble(), rotObj["y"].toDouble(), rotObj["z"].toDouble());
-        result["rotation3D"] = rotQuat;
+        this->setRotation3D(rotQuat);
 
-        // reconstruct zoom
+        this->setZoom3D(presetObj["zoom3D"].toDouble(3.0));
+
+        // Sync map outputs
+        result["isFreeFlyMode"] = freeFly;
+        result["pan3D"] = panVec;
+        result["rotation3D"] = rotQuat;
         result["zoom3D"] = presetObj["zoom3D"].toDouble(3.0);
     } else {
-        // clear values if switching to 2d preset
+        // Apply 2D view state properties natively
+        double zoom2D = presetObj["zoom"].toDouble();
+        QJsonObject centerObj = presetObj["center"].toObject();
+        QVector2D centerVec(centerObj["x"].toDouble(), centerObj["y"].toDouble());
+
+        this->setZoomLevel(zoom2D);
+        this->setZoomCenter(centerVec);
+        this->setFreeFlyMode(false);
+
         result["pan3D"] = QVector3D(0.0f, 0.0f, 0.0f);
         result["rotation3D"] = QQuaternion();
         result["zoom3D"] = 3.0f;
+        result["isFreeFlyMode"] = false;
     }
+
+    // Step D: Ensure QML properties stay synced up with the return map values
+    result["stops"] = retrievedStops;
+    result["set"] = targetSet;
+    result["is3DMode"] = is3D;
+    result["zoom"] = presetObj["zoom"].toDouble();
+
+    QJsonObject finalCenterObj = presetObj["center"].toObject();
+    result["center"] = QVector2D(finalCenterObj["x"].toDouble(), finalCenterObj["y"].toDouble());
+
+    // Trigger update/repaint checks on your engine view scene
+    this->update();
 
     return result;
 }
