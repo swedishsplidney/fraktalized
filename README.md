@@ -53,7 +53,7 @@ fraktalized currently has 10 fractal sets:
 * **anti-buddhabrot:** reverse buddhabrot
 * **barnsley fern:** looks very naturey
 * **mandelbulb:** like the mandelbrot but 3d
-* **menger sponge:** cube, now with infinite* surface area
+* **menger sponge:** cube, but with infinite* surface area
 * **icebox:** spiky box!
 
 ### current fractal types:
