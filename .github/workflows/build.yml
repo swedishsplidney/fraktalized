@@ -64,16 +64,9 @@ jobs:
           arch: ${{ matrix.qt-arch }}
           mirror: 'https://mirrors.kernel.org/qtproject'
 
-      # missing agl framework fix
-      - name: mock missing macos components
-        if: matrix.os == 'macos-latest'
-        run: |
-          mkdir -p build/Frameworks/AGL.framework
-          touch build/Frameworks/AGL.framework/AGL
-
       # configure cmake
       - name: configure cmake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'macos-latest' && '-DCMAKE_MACOSX_BUNDLE=ON -DCMAKE_EXE_LINKER_FLAGS="-F${CMAKE_BINARY_DIR}/Frameworks"' || '' }}
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       # build binary
       - name: build binary
@@ -107,10 +100,43 @@ jobs:
       - name: package linux binary
         if: matrix.os == 'ubuntu-latest'
         run: |
-          mkdir -p dist
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 file
+          
+          wget -q https://raw.githubusercontent.com/linuxdeploy/linuxdeploy/master/CI/get_linuxdeploy.sh
+          bash get_linuxdeploy.sh
+          wget -q https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-qt/master/CI/get_linuxdeploy_plugin_qt.sh
+          bash get_linuxdeploy_plugin_qt.sh
+          
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          
           LINUX_BIN=$(find build -maxdepth 2 -name "fraktalized" -type f -executable | head -n 1)
-          cp "$LINUX_BIN" dist/
-          tar -czf fraktalized-linux-${{ github.ref_name }}.tar.gz -C dist .
+          cp "$LINUX_BIN" AppDir/usr/bin/
+          
+          cat <<EOF > AppDir/usr/share/applications/fraktalized.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=Fraktalized
+          Exec=fraktalized
+          Icon=fraktalized
+          Categories=Utility;
+          EOF
+          
+          convert -size 256x256 xc:purple AppDir/usr/share/icons/hicolor/256x256/apps/fraktalized.png || touch AppDir/usr/share/icons/hicolor/256x256/apps/fraktalized.png
+          
+          export QML_SOURCES_PATHS="qml"
+
+          export Qt6_DIR="${{ env.Qt6_DIR }}"
+          
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --plugin qt \
+            --output appimage
+          
+          GENERATED_APPIMAGE=$(find . -maxdepth 1 -name "*.AppImage" | head -n 1)
+          mv "$GENERATED_APPIMAGE" fraktalized-linux-${{ github.ref_name }}.tar.gz
 
       # upload finished binaries to workflow run storage
       - name: upload artifacts

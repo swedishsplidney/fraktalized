@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.2)
+cmake_minimum_required(VERSION 3.20)
 project(fraktalized LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -9,8 +9,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 if(APPLE)
-    add_library(WrapOpenGL::AGL INTERFACE IMPORTED)
-    set_target_properties(WrapOpenGL::AGL PROPERTIES INTERFACE_LINK_LIBRARIES "")
+    add_library(WrapOpenGL::AGL INTERFACE IMPORTED GLOBAL)
+    add_library(OpenGL::GL INTERFACE IMPORTED GLOBAL)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Widgets OpenGL)
