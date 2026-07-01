@@ -42,7 +42,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          ssudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xorg-dev libxkbcommon-dev libxcb-cursor0
+          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xorg-dev libxkbcommon-dev libxcb-cursor0
 
       # force latest cmake to satisfy cmake version check
       - name: setup latest cmake
