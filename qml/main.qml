@@ -1568,7 +1568,7 @@ Window {
 
                     onClicked: {
                         if (tutorialManager) {
-                            tutorialManager.nextStep()
+                            tutorialManager.nextStep(engine.is3DMode)
                         }
                         engine.forceActiveFocus()
                     }
@@ -1599,8 +1599,34 @@ Window {
             return findChildByName(sidebar, tutorialManager.targetElement);
         }
 
-        property rect targetRect: targetItem ? targetItem.mapToItem(spotlightMask, 0, 0, targetItem.width, targetItem.height) : Qt.rect(0,0,0,0)
+        property rect targetRect: Qt.rect(0, 0, 0, 0)
         property rect tutorialRect: tutorialOverlay ? tutorialOverlay.mapToItem(spotlightMask, 0, 0, tutorialOverlay.width, tutorialOverlay.height) : Qt.rect(0,0,0,0)
+
+        function updateSpotlightCoordinates() {
+            if (spotlightMask.targetItem) {
+                spotlightMask.targetRect = spotlightMask.targetItem.mapToItem(
+                    spotlightMask,
+                    0,
+                    0,
+                    spotlightMask.targetItem.width,
+                    spotlightMask.targetItem.height
+                );
+            } else {
+                spotlightMask.targetRect = Qt.rect(0, 0, 0, 0);
+            }
+        }
+
+        onTargetItemChanged: {
+            updateSpotlightCoordinates();
+        }
+
+        Connections {
+            target: (typeof sidebarScroll !== "undefined" && sidebarScroll.contentItem) ? sidebarScroll.contentItem : null
+
+            function onContentYChanged() {
+                spotlightMask.updateSpotlightCoordinates();
+            }
+        }
 
         property bool isComboBox: tutorialManager ? (tutorialManager.targetElement.toLowerCase().indexOf("selector") !== -1 ||
             tutorialManager.targetElement.toLowerCase().indexOf("combo") !== -1) : false

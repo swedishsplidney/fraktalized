@@ -110,7 +110,16 @@ void TutorialManager::updateCurrentState() {
     emit tutorialChanged();
 }
 
-void TutorialManager::nextStep() {
+void TutorialManager::nextStep(bool is3DModeActive) {
+    if (m_currentStepIndex == 3) {
+        if (!is3DModeActive) {
+            m_currentText = "please switch to 3d mode before continuing!";
+
+            emit tutorialChanged();
+            return;
+        }
+    }
+
     if (m_currentStepIndex < m_steps.size()) {
         m_currentStepIndex++;
         updateCurrentState();

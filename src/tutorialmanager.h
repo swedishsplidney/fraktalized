@@ -29,7 +29,7 @@ public:
     double completion() const;
     QString targetElement() const;
 
-    Q_INVOKABLE void nextStep();
+    Q_INVOKABLE void nextStep(bool is3DModeActive);
     Q_INVOKABLE void resetTutorial();
 
 signals:
