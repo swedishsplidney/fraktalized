@@ -222,6 +222,85 @@ $$\text{Distance} = 0.5 \cdot \frac{r}{\ln(r)} \cdot dr$$
 
 ---
 
+## building and running: 
+
+### prerequisites:
+
+before building, make sure that you have a c++ 20 compatible compiler, **CMake (v3.20+)**, and **Qt 6.x (with QML/quick modules)** installed
+
+### step 1: clone the repo
+
+```bash
+git clone --recursive https://github.com/swedishsplidney/fraktalized.git
+cd fraktalized
+```
+
+### step 2: build
+
+### - linux:
+
+install the required dev and qt6 packages:
+
+* **fedora:**
+  * ```bash
+    sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel mesa-libGL-devel gcc-c++ cmake
+    ```
+    
+* **ubuntu / debian:**
+  * ```bash
+    sudo apt install qt6-base-dev qt6-declarative-dev libgl1-mesa-dev g++ cmake
+    ```
+    
+* **arch:**
+  * ```bash
+    sudo pacman -S qt6-base qt6-declarative mesa cmake base-devel
+    ```
+    
+then generate the build files and compile:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+```
+
+now, you can run the compiled binary:
+
+```bash
+./build/fraktalized
+```
+
+### - windows (msvc 2022)
+
+open the developer command prompt for VS 2022 and run:
+
+```bat
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:\Qt\6.x.x\msvc2022_64"
+cmake --build build --config Release
+```
+
+then, run the executable:
+
+```bat
+build\Release\fraktalized.exe
+```
+
+### - macOS:
+
+run:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="/usr/local/opt/qt6"
+cmake --build build --config Release
+```
+
+then you can run the .app:
+
+```bash
+open build/fraktalized.app
+```
+
+---
+
 ## ai disclosure:
 
 no generative ai or LLMs were used to write or debug any of this code or documentation
