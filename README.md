@@ -25,6 +25,8 @@ fraktalized uses a split-threaded system where a floating sidebar interface
 controls a high-performance fragment shader inside a dedicated framebuffer object running off of
 fragment `.frag`/`.vert`, and compute `.glsl` shader files.
 
+i also made a demo video [here](https://youtu.be/x9lH_pPzvbw)
+
 ---
 
 ## technical features:
@@ -192,6 +194,19 @@ $$\text{Distance} = 0.5 \cdot \frac{r}{\ln(r)} \cdot dr$$
 *above: barnsley fern fractal set, red (3840x2160)*
 
  
+
+![mandelbulb](images/render_20260619_002508.png)
+*above: mandelbulb fractal set, purple and white (3840x2160)*
+
+ 
+
+![menger sponge](images/render_20260625_202311.png)
+*above: menger sponge fractal, purple and pink (3840x2160)*
+
+ 
+
+![icebox](images/render_20260701_225454.png)
+*above: icebox fractal, cyan (3840x2160)*
 
 ---
 
