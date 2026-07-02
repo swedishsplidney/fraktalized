@@ -26,7 +26,7 @@ void TutorialManager::loadSteps() {
     m_steps.append({ "over here is the fractal selector! try selecting a few different fractal types, and click 'next' when you're ready to continue.", "bottom", 0.2, "selector" });
     m_steps.append({ "this is the iteration controller. the amount of iterations determines the fractal's detail. hit next to continue!", "bottom", 0.3, "iteration" });
     m_steps.append({ "over here, you can switch to 3d mode! try checking out the different 3d fractals! when you're ready, click 'next' to continue.", "bottom", 0.4, "toggle" });
-    m_steps.append({ "here, you can switch between orbital and free camera modes. try exploring in 3d with these different modes!", "bottom", 0.5, "freeflytoggle" });
+    m_steps.append({ "here, you can switch between orbital and free camera modes. try exploring in 3d with these different modes! you can use scroll wheel to change your speed.", "bottom", 0.5, "freeflytoggle" });
     m_steps.append({ "over here, you can export whatever you're currently looking at! you can set any resolution you like, then just hit 'save to file'", "bottom", 0.6, "save" });
     m_steps.append({ "here, you can change the colors that the fractal maps to! you can click and drag the handles, or double click them to change their color.", "bottom", 0.7, "color" });
     m_steps.append({ "thats pretty much it! have fun exploring these beautiful mathy functions!", "bottom", 0.9 });
