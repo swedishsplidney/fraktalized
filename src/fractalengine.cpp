@@ -736,6 +736,7 @@ void FractalFBORenderer::render() {
             glViewport(0, 0, width, height);
         }
     }
+    Diagnostics::DiagnosticsMonitor::verifyPipelineIntegrity("FractalFBORenderer::render", 999);
 }
 
 // 3d lerping
