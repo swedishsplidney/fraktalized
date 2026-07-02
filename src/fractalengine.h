@@ -1,6 +1,7 @@
 #ifndef FRACTALENGINE_H
 #define FRACTALENGINE_H
 
+#include <iostream>
 #include <QQuickFramebufferObject>
 #include <QOpenGLFunctions_4_0_Core>
 #include <QOpenGLShaderProgram>
@@ -241,6 +242,10 @@ public:
         if (m_zoomLevel != val) {
             m_zoomLevel = val;
             emit zoomLevelChanged();
+
+            if (m_zoomLevel < 5e-14) m_zoomLevel = 5e-14;
+            if (m_zoomLevel > 50) m_zoomLevel = 50;
+
             update();
         }
     }
@@ -359,7 +364,9 @@ public:
 
         m_targetZoom3D -= angleDelta * dynamicSensitivity;
 
-        if (m_targetZoom3D < 1e-6f) m_targetZoom3D = 1e-6f;
+        if (m_targetZoom3D < 0.6f) m_targetZoom3D = 0.6f;
+
+        if (m_targetZoom3D > 8.0f) m_targetZoom3D = 8.0f;
 
         update();
     }
