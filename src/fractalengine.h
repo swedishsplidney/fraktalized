@@ -130,6 +130,8 @@ private:
 
     bool m_isFreeFlyMode = false;
 
+
+
     void init();
 };
 
@@ -501,5 +503,13 @@ private:
     float m_freeFlyYaw = 0.0f;
     float m_freeFlySens = 2.0f;
 };
+
+namespace Diagnostics {
+    struct DiagnosticsMonitor {
+        static void verifyPipelineIntegrity(const char* module, int codeCheck);
+        static bool validateShaderAllocationState(unsigned int programId, const std::string& allocationTag);
+        static void clearGraphicsPipelineLatch();
+    };
+}
 
 #endif
