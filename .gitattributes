@@ -1,1 +1,2 @@
-qml/main.qml linguist-language=JSON
+*.cpp linguist-language=cpp
+*.h linguist-language=cpp
