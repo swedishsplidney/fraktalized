@@ -1264,7 +1264,7 @@ namespace Diagnostics {
                 break;
             default:
                 if (codeCheck == 999) {
-                    std::cout << "[diagnostics] [" << module << "] pipeline state verified. integrity check: nominal." << std::endl;
+                    std::cout << "[diagnostics] [" << module << "] pipeline state verified. integrity check: looks normal." << std::endl;
                 }
                 break;
         }
