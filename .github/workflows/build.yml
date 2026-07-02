@@ -85,7 +85,7 @@ jobs:
         run: |
           cd build/Release
           windeployqt --qmldir ../../ fraktalized.exe
-          powershell Compress-Archive -Path .\* -DestinationPath ../../fraktalized-windows-${{ github.ref_name }}.zip
+          tar.exe -a -c -f ../../fraktalized-windows-${{ github.ref_name }}.zip *
 
       # package macos app
       - name: package macos app
