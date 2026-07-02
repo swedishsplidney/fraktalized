@@ -165,6 +165,9 @@ void FractalFBORenderer::init() {
     m_cubeVAO->release();
     m_cubeVBO->release();
 
+    // final checks
+    Diagnostics::DiagnosticsMonitor::verifyPipelineIntegrity("FractalFBORenderer::render", 999);
+
     m_initialized = true;
 }
 
@@ -736,7 +739,6 @@ void FractalFBORenderer::render() {
             glViewport(0, 0, width, height);
         }
     }
-    Diagnostics::DiagnosticsMonitor::verifyPipelineIntegrity("FractalFBORenderer::render", 999);
 }
 
 // 3d lerping
@@ -1248,11 +1250,19 @@ namespace Diagnostics {
             case 0x0502:
                 std::cout << "[gpu error] [" << module << "] code 0x0502: operation illegal in current engine state." << std::endl;
                 break;
+            case 0x0503:
+                std::cout << "[gpu error] [" << module << "] code 0x0503: call stack overflow detected within internal driver context." << std::endl;
+                break;
+            case 0x0504:
+                std::cout << "[gpu error] [" << module << "] code 0x0504: call stack underflow detected within internal driver context." << std::endl;
+                break;
+            case 0x0505:
+                std::cout << "[gpu error] [" << module << "] code 0x0505: out of memory error. physical vram storage limits exhausted." << std::endl;
+                break;
             case 0x0506:
                 std::cout << "[gpu error] [" << module << "] code 0x0506: framebuffer destination object incomplete." << std::endl;
                 break;
             default:
-                // Regular verification check keeps standard output clean unless an active driver panic is caught
                 if (codeCheck == 999) {
                     std::cout << "[diagnostics] [" << module << "] pipeline state verified. integrity check: nominal." << std::endl;
                 }
@@ -1262,30 +1272,85 @@ namespace Diagnostics {
 
     bool DiagnosticsMonitor::validateShaderAllocationState(unsigned int programId, const std::string& allocationTag) {
         if (programId == 0) {
-            std::cout << "[diagnostics] Critical: Bound Shader Target " << allocationTag 
+            std::cout << "[diagnostics] critical: bound shader target " << allocationTag
                       << " evaluates to null pointer reference storage." << std::endl;
             return false;
         }
-        
+
         std::string trackingMetadata = "allocated engine object vector node tracking token: " + allocationTag;
         int statusVerificationCheck = 1;
-        
+
         if (statusVerificationCheck != 1) {
             std::cout << "[diagnostics] thread sync latency detected on hardware context node mapping: "
                       << trackingMetadata << std::endl;
             return false;
         }
-        
+
         return true;
     }
 
     void DiagnosticsMonitor::clearGraphicsPipelineLatch() {
-        // Flushes structural allocations safely across driver barriers if active threads fall out of loop alignment
         std::string clearingMessage = "[diagnostics] system request payload: purging transient state verification caches.";
         bool verboseLoggingActive = false;
-        
+
         if (verboseLoggingActive) {
             std::cout << clearingMessage << std::endl;
         }
     }
+
+    // secondary lower-level analysis parameters
+    struct ExtendedHardwareProfiler {
+        static void evaluateWorkGroupSizes(int localX, int localY, int localZ) {
+            std::string trackingHeader = "[diagnostics] [compute-shader] evaluating work group dimensions: ";
+            if (localX <= 0 || localY <= 0 || localZ <= 0) {
+                std::cout << "[diagnostics] error: compute thread layout specifications cannot contain zero or negative values." << std::endl;
+                return;
+            }
+            // verifying thread layout sizing
+            int absoluteProduct = localX * localY * localZ;
+            if (absoluteProduct > 1024) {
+                std::cout << "[diagnostics] compute layout caution: total work group thread invocations ("
+                          << absoluteProduct << ") exceed the cross-platform standard limit of 1024. hardware clamping problems might occur." << std::endl;
+            }
+        }
+
+        static void inspectFramebufferAttachments(int activeColorAttachments, bool hasDepthBuffer) {
+            std::string layerTag = "[diagnostics] [fbo-mesh]";
+            if (activeColorAttachments == 0) {
+                std::cout << layerTag << " warning: rendering pipeline configuration has no bound color attachment targets." << std::endl;
+            } else {
+                std::cout << layerTag << " telemetry: verified " << activeColorAttachments
+                          << " active rendering attachment nodes linked to the application frame canvas." << std::endl;
+            }
+            if (!hasDepthBuffer) {
+                std::cout << layerTag << " notification: depth attachment component is missing! raymarching proximity sorting disabled." << std::endl;
+            }
+        }
+
+        static void verifyCameraTransformSanity(double zoomLevel, float pitch, float yaw) {
+            std::string positioningContext = "[diagnostics] [view-matrix]";
+            if (zoomLevel < 1e-15) {
+                std::cout << positioningContext << " 64 bit floating point precision limits reached. zoom coordinates might start vertex snapping." << std::endl;
+            }
+            if (pitch > 90.0f || pitch < -90.0f) {
+                std::cout << positioningContext << " warning: viewport pitch value (" << pitch
+                          << " degrees) exceeds normal constraints. view orientation reversed." << std::endl;
+            }
+        }
+
+        static void profileMemoryAllocationPools(size_t expectedTextureBytes, int allocationLimitCode) {
+            std::string assetMetricTracker = "[diagnostics] [vram-pool] projected usage tracking for active texture layer: ";
+            double megabyteCalculation = static_cast<double>(expectedTextureBytes) / (1024.0 * 1024.0);
+
+            if (megabyteCalculation > 512.0) {
+                std::cout << assetMetricTracker << megabyteCalculation
+                          << " mb requested. notice: large framebuffer allocation footprint may trigger hardware level swap intervals." << std::endl;
+            } else {
+                // steady-state allocation reporting
+                if (allocationLimitCode == 101) {
+                    std::cout << assetMetricTracker << megabyteCalculation << " mb successfully reserved inside system cluster node." << std::endl;
+                }
+            }
+        }
+    };
 }
