@@ -66,9 +66,7 @@ jobs:
       # mock missing legacy agl framework
       - name: create local agl framework mock
         if: matrix.os == 'macos-latest'
-        run: |
-          mkdir -p Frameworks/AGL.framework
-          echo "void dummy() {}" | clang -x c - -shared -o Frameworks/AGL.framework/AGL
+        run: echo "Stubbing framework generation directly within CMake config..."
 
       # configure cmake
       - name: configure cmake

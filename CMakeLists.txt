@@ -9,9 +9,14 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 if(APPLE)
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/mock_frameworks")
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/mock_frameworks/AGL.framework")
-    file(WRITE "${CMAKE_BINARY_DIR}/mock_frameworks/AGL.framework/AGL" "")
+
+    file(WRITE "${CMAKE_BINARY_DIR}/agl_stub.c" "void dummy_agl_symbol(void) {}\n")
+
+    execute_process(
+            COMMAND clang -x c "${CMAKE_BINARY_DIR}/agl_stub.c" -shared -o "${CMAKE_BINARY_DIR}/mock_frameworks/AGL.framework/AGL"
+            RESULT_VARIABLE CLANG_STUB_RESULT
+    )
 
     set(OPENGL_agl_LIBRARY "${CMAKE_BINARY_DIR}/mock_frameworks/AGL.framework/AGL" CACHE FILEPATH "" FORCE)
     set(WrapOpenGL_FOUND TRUE CACHE BOOL "" FORCE)
