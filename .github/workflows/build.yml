@@ -123,7 +123,6 @@ jobs:
           LINUX_BIN=$(find build -maxdepth 2 -name "fraktalized" -type f -executable | head -n 1)
           cp "$LINUX_BIN" AppDir/usr/bin/
           
-          # --- FIXED: Pure executable target names keep linuxdeploy happy ---
           cat <<EOF > AppDir/usr/share/applications/fraktalized.desktop
           [Desktop Entry]
           Type=Application
@@ -135,11 +134,13 @@ jobs:
           
           python3 -c "import struct; open('AppDir/usr/share/icons/hicolor/256x256/apps/fraktalized.png', 'wb').write(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\rIDATx\x9cc` \x05\x00\x00\x0e\x00\x01\xa8\x91\xa1\xc1\x00\x00\x00\x00IEND\xaeB`\x82')"
           
+          # --- FIX: Tell linuxdeploy where your specific Qt 6 installation lives ---
+          export QMAKE="${QT6_DIR}/bin/qmake"
+          export PATH="${QT6_DIR}/bin:$PATH"
           export QML_SOURCES_PATHS="qml"
+          
           export FORCE_KEYFOOTPRINT=1
           export APPIMAGE_EXTRACT_AND_RUN=1
-          
-          # Force deployment plugin to pack the necessary style engines
           export EXTRA_QT_PLUGINS="platformthemes,styles"
           
           ./linuxdeploy-x86_64.AppImage \
@@ -147,12 +148,10 @@ jobs:
             --plugin qt \
             --output appimage
           
-          # --- STYLING FIX: Override the internal AppRun file inside the AppDir container after deployment to inject system themes ---
           if [ -f "AppDir/AppRun" ]; then
             sed -i 's|#!/bin/bash|#!/bin/bash\nexport QT_QPA_PLATFORMTHEME=gtk3|' AppDir/AppRun
           fi
           
-          # Regenerate cleanly with the layout modification saved
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
           
           rm linuxdeploy-x86_64.AppImage
