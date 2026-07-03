@@ -142,24 +142,27 @@ jobs:
           
           export QMAKE="${QT_INSTALL_DIR}/bin/qmake"
           export PATH="${QT_INSTALL_DIR}/bin:$PATH"
-          export QML_SOURCES_PATHS="qml"
+          
+          # Point this directly to your project root to scan ALL subdirectories for .qml files
+          export QML_SOURCES_PATHS="."
           
           export FORCE_KEYFOOTPRINT=1
           export APPIMAGE_EXTRACT_AND_RUN=1
           export EXTRA_QT_PLUGINS="platformthemes,styles"
           
+          # Run linuxdeploy ONCE with the plugin and output flag together
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --plugin qt \
             --output appimage
           
+          # Inject the theme engine fix directly into the generated AppRun file afterward
           if [ -f "AppDir/AppRun" ]; then
             sed -i 's|#!/bin/bash|#!/bin/bash\nexport QT_QPA_PLATFORMTHEME=gtk3|' AppDir/AppRun
           fi
           
-          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
-          
           rm linuxdeploy-x86_64.AppImage
+          rm linuxdeploy-plugin-qt-x86_64.AppImage
           
           REAL_APPIMAGE=$(find . -maxdepth 1 -name "*.AppImage" | head -n 1)
           mv "$REAL_APPIMAGE" "fraktalized-linux-${{ github.ref_name }}.AppImage"
