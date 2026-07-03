@@ -134,7 +134,6 @@ jobs:
           
           python3 -c "import struct; open('AppDir/usr/share/icons/hicolor/256x256/apps/fraktalized.png', 'wb').write(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\rIDATx\x9cc` \x05\x00\x00\x0e\x00\x01\xa8\x91\xa1\xc1\x00\x00\x00\x00IEND\xaeB`\x82')"
           
-          # --- FIX: Tell linuxdeploy where your specific Qt 6 installation lives ---
           export QMAKE="${QT6_DIR}/bin/qmake"
           export PATH="${QT6_DIR}/bin:$PATH"
           export QML_SOURCES_PATHS="qml"
