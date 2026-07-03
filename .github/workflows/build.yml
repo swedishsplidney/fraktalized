@@ -134,8 +134,14 @@ jobs:
           
           echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > AppDir/usr/share/icons/hicolor/256x256/apps/fraktalized.png
           
-          export QMAKE="${QT6_DIR}/bin/qmake"
-          export PATH="${QT6_DIR}/bin:$PATH"
+          QT_INSTALL_DIR=$(find /home/runner/work/ -name "gcc_64" -type d | head -n 1)
+          if [ -z "$QT_INSTALL_DIR" ]; then
+            echo "Error: Could not locate Qt6 installation directory automatically."
+            exit 1
+          fi
+          
+          export QMAKE="${QT_INSTALL_DIR}/bin/qmake"
+          export PATH="${QT_INSTALL_DIR}/bin:$PATH"
           export QML_SOURCES_PATHS="qml"
           
           export FORCE_KEYFOOTPRINT=1
@@ -156,7 +162,6 @@ jobs:
           rm linuxdeploy-x86_64.AppImage
           
           REAL_APPIMAGE=$(find . -maxdepth 1 -name "*.AppImage" | head -n 1)
-          
           mv "$REAL_APPIMAGE" "fraktalized-linux-${{ github.ref_name }}.AppImage"
 
       # upload finished binaries to workflow run storage
